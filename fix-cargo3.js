@@ -1,0 +1,11 @@
+const fs = require('fs');
+let content = fs.readFileSync('src-tauri/Cargo.toml', 'utf8');
+content = content.split('crates/audio').join('crates/lifestone-audio');
+content = content.split('crates/stt').join('crates/lifestone-stt');
+content = content.split('crates/bible').join('crates/lifestone-bible');
+content = content.split('crates/detection').join('crates/lifestone-detection');
+content = content.split('crates/broadcast').join('crates/lifestone-broadcast');
+content = content.split('crates/api').join('crates/lifestone-api');
+content = content.split('crates/notes').join('crates/lifestone-notes');
+fs.writeFileSync('src-tauri/Cargo.toml', content);
+console.log('Fixed Cargo.toml');

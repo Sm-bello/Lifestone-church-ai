@@ -1,0 +1,74 @@
+---
+title: Theme Designer
+description: A visual canvas editor that produces broadcast-ready verse overlays — backgrounds, typography, shadows, outlines, and exact pixel positioning.
+icon: Palette
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+The theme designer lets you build verse overlays the same way a graphic
+designer would — by composing on a canvas — and then sends the result to
+NDI exactly as designed.
+
+![Theme designer canvas with a sample verse overlay, sidebar controls for typography and backgrounds](/docs/screenshots/theme-designer-canvas.png)
+
+*The theme designer canvas with the inspector panel on the right. Each token (reference, verse text, translation tag, verse number) is its own selectable element with its own typography, fill, shadow, and outline controls. **Click to expand.***
+
+## What you can compose
+
+- **Backgrounds**: solid colors, multi-stop gradients, still images, or
+  fully transparent (the four background types in `BroadcastTheme`).
+- **Typography**: choose any installed system font, set size, weight,
+  letter-spacing, line-height, and alignment.
+- **Effects**: drop shadows, outlines/strokes, fills, and blur.
+- **Layout**: drag elements to position them with pixel precision; the
+  canvas reflects the exact NDI output dimensions.
+- **Tokens**: place the verse text, the reference, the translation tag,
+  and the verse number as separate elements so they can be styled
+  independently.
+
+## Built-in starters
+
+Rhema ships with three opinionated starter themes (`src/lib/builtin-themes.ts`)
+that you can clone and modify:
+
+- **Classic Dark** — a high-contrast dark overlay tuned for typical
+  stage lighting.
+- **Modern Light** — a soft, light-on-dark variant for warmer venue
+  palettes.
+- **Broadcast Overlay** — a broadcast-safe layout designed for
+  composition over a live camera feed.
+
+Each starter is a regular project file you can save, version, and
+re-export.
+
+## Switching themes live
+
+![Theme picker in the transport bar showing the three built-in starters](/docs/screenshots/transport-theme-picker.png)
+
+*The theme picker lives next to the on-air toggle in the transport bar. Hovering an entry shows a thumbnail of how the active verse will look in that theme, so operators can preview before committing. **Click to expand.***
+
+
+Themes can be activated from:
+
+- The theme picker in the transport bar.
+- A Stream Deck or other OSC controller (`/rhema/theme`).
+- The HTTP control endpoint (`POST /api/v1/control` with `{ "command": "theme", "value": "Classic Dark" }`).
+
+The currently active theme is reflected in the **preview** panel before
+it goes on-air, and committed to NDI when you toggle the on-air switch.
+
+<Callout title="Resolution and color space" type="info">
+NDI output is composited at the exact pixel dimensions of the canvas. If
+your downstream switcher (vMix, OBS, Resolume) expects 1920×1080 with
+straight alpha, set the canvas to that and Rhema sends straight alpha
+NDI frames natively.
+</Callout>
+
+## Saving and sharing
+
+Themes are persisted to `broadcast-themes.json` in the app's data
+directory via `tauri-plugin-store` (see `src/stores/broadcast-store.ts`),
+so changes auto-save across restarts. The JSON is self-contained — no
+external font files or absolute paths — so you can copy a theme between
+machines or commit them to a service template repository for your team.

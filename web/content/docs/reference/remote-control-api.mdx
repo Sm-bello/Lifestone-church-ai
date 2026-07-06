@@ -1,0 +1,143 @@
+---
+title: Remote Control API
+description: Wire-level reference for the OSC addresses and HTTP endpoints that drive Rhema from external controllers.
+icon: Webhook
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+This page is the protocol-level reference. For setup, examples, and
+controller-specific tips, see [Remote control](/docs/features/remote-control).
+
+## Command catalog
+
+Eight commands are supported by both protocols:
+
+| Command | Effect |
+| --- | --- |
+| `next` | Advance the verse queue by one |
+| `prev` | Move back one in the queue |
+| `show` | Bring the overlay on-air |
+| `hide` | Take the overlay off-air |
+| `theme <value>` | Switch the active theme by name |
+| `opacity <value>` | Set overlay opacity (placeholder — wired but not yet effective) |
+| `confidence <value>` | Set the detector's confidence threshold |
+| `on_air <value>` | Force the on-air toggle to the given value |
+
+Commands are case-insensitive on input. `value` argument types vary:
+`theme` is a string, `opacity` and `confidence` are floats in `[0.0,
+1.0]`, and `on_air` is a boolean (`true` / `false`).
+
+## OSC
+
+OSC runs over UDP on port `8000` (configurable). Address pattern is
+`/rhema/<command>`. Type coercion is permissive — `int`, `float`, and
+`bool` argument types are coerced to the target command variant
+without error, so any controller's idea of how to send a number
+works.
+
+| Address | Argument | Example |
+| --- | --- | --- |
+| `/rhema/next` | none | `oscsend localhost 8000 /rhema/next` |
+| `/rhema/prev` | none | `oscsend localhost 8000 /rhema/prev` |
+| `/rhema/show` | none | `oscsend localhost 8000 /rhema/show` |
+| `/rhema/hide` | none | `oscsend localhost 8000 /rhema/hide` |
+| `/rhema/theme` | string | `oscsend localhost 8000 /rhema/theme s "Classic Dark"` |
+| `/rhema/opacity` | float | `oscsend localhost 8000 /rhema/opacity f 0.75` |
+| `/rhema/confidence` | float | `oscsend localhost 8000 /rhema/confidence f 0.8` |
+| `/rhema/on_air` | bool | `oscsend localhost 8000 /rhema/on_air T` |
+
+## HTTP API
+
+The HTTP server is built with Axum, listens on port `8080`
+(configurable), and exposes three endpoints under the `/api/v1/`
+prefix.
+
+### `GET /api/v1/health`
+
+A liveness check that returns the service identity:
+
+```bash
+curl http://localhost:8080/api/v1/health
+```
+
+```json
+{ "status": "ok", "service": "rhema", "version": "..." }
+```
+
+### `GET /api/v1/status`
+
+```bash
+curl http://localhost:8080/api/v1/status
+```
+
+Returns a state snapshot from a Rust-side cache that the frontend
+refreshes once per second:
+
+```json
+{
+  "on_air": true,
+  "active_theme": "Classic Dark",
+  "live_verse": "John 3:16",
+  "queue_length": 12,
+  "confidence_threshold": 0.75
+}
+```
+
+`active_theme` and `live_verse` are nullable — they're `null` until a
+theme is selected or a verse is sent live.
+
+### `POST /api/v1/control`
+
+Dispatch any command from the catalog. The body is JSON with a
+`command` key and (for commands that take a parameter) a `value` key:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/control \
+  -H 'Content-Type: application/json' \
+  -d '{"command":"theme","value":"Classic Dark"}'
+```
+
+```json
+{ "success": true, "error": null }
+```
+
+Unknown commands and invalid JSON are rejected with `success: false`
+and a descriptive `error` string.
+
+<Callout title="CORS is permissive by default" type="warn">
+The Axum router attaches `CorsLayer::permissive()`, so any origin on
+the network can call the API from a browser. That's convenient for
+local dashboards but unsafe to leave on once the listener is reachable
+beyond a trusted LAN — pair binding to `127.0.0.1` with a reverse
+proxy when you expose it.
+</Callout>
+
+## Persistence and shutdown semantics
+
+Both listeners can be started and stopped at runtime without
+restarting Rhema. Port-bind failures surface as visible errors in
+the Settings panel rather than silent listener crashes. Both
+listeners shut down cleanly on app exit — no zombie threads, no
+orphaned ports.
+
+## Authentication
+
+By default both protocols are unauthenticated and bind to `0.0.0.0`.
+For multi-machine deployments, route them through your network's
+existing auth (a reverse proxy with mTLS, a Tailscale ACL, etc.) —
+the API is intentionally simple and protocol-only so it composes
+with whatever you already trust. For local-only access, bind to
+`127.0.0.1` in Settings → Remote.
+
+## Status field reference
+
+The keys returned by `/api/v1/status`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `on_air` | boolean | Whether the broadcast overlay is currently on-air |
+| `active_theme` | string | Name of the currently selected theme |
+| `live_verse` | string | Reference of the verse currently displayed (e.g. `"John 3:16"`) |
+| `queue_length` | integer | Number of verses staged in the queue |
+| `confidence_threshold` | number | Detection confidence threshold in `[0.0, 1.0]` |

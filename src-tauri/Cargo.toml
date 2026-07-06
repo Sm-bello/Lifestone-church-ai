@@ -1,0 +1,79 @@
+[workspace]
+members = [
+    ".",
+    "crates/lifestone-audio",
+    "crates/lifestone-stt",
+    "crates/lifestone-bible",
+    "crates/lifestone-detection",
+    "crates/lifestone-broadcast",
+    "crates/lifestone-api",
+    "crates/lifestone-notes",
+]
+resolver = "2"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[package]
+name = "lifestone"
+version = "0.1.0"
+description = "Lifestone - Real-Time AI Bible Verse Detection"
+authors = ["Faithful"]
+license = "MIT"
+repository = "https://github.com/colig-base/lifestone"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "lifestone_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "Lifestone"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+serde_json.workspace = true
+serde.workspace = true
+log.workspace = true
+tokio.workspace = true
+tauri = { version = "2.10.3", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-store = "2"
+lifestone-audio = { path = "crates/lifestone-audio" }
+lifestone-bible = { path = "crates/lifestone-bible" }
+lifestone-stt = { path = "crates/lifestone-stt" }
+lifestone-broadcast = { path = "crates/lifestone-broadcast" }
+lifestone-detection = { path = "crates/lifestone-detection", features = ["onnx", "vector-search"] }
+lifestone-api = { path = "crates/lifestone-api" }
+crossbeam-channel = "0.5"
+base64 = "0.22"
+sysinfo = { version = "0.33", default-features = false, features = ["system"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+
+[features]
+default = ["whisper"]
+whisper = ["lifestone-stt/whisper"]
+
+[lints]
+workspace = true
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2"

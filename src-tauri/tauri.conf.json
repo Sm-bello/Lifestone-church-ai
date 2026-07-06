@@ -1,0 +1,73 @@
+{
+  "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Lifestone",
+  "version": "0.1.0",
+  "identifier": "com.openbezal.rhema",
+  "build": {
+    "frontendDist": "../build",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "bun dev",
+    "beforeBuildCommand": "bun run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Lifestone",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost data: blob:; media-src 'self' asset: https://asset.localhost blob:; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; worker-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi", "dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/ppt_sidecar"
+    ],
+    "resources": {
+      "../models/whisper/ggml-base.en.bin": "models/whisper/ggml-base.en.bin",
+      "../models/whisper/ggml-nigerian.bin": "models/whisper/ggml-nigerian.bin",
+      "../data/lifestone.db": "lifestone.db",
+      "../models/minilm-onnx/onnx/model.onnx": "models/minilm-onnx/onnx/model.onnx"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "signingIdentity": null,
+      "entitlements": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://api.github.com/repos/Sm-bello/lifestone-church-ai/releases/latest"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFCOTBFOUU3QjUxODc2M0UKUldRK2RoaTE1K21RcTg2MkU0VlZQYVpmdFVJd0RBOHdSNGFKcnNScmJwN0ZPeXB6SmhmUUEzTE8K"
+    }
+  }
+}
