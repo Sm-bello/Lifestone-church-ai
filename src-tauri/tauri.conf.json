@@ -41,9 +41,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/ppt_sidecar"
-    ],
     "resources": [
       {
         "../models/whisper/ggml-base.en.bin": "models/whisper/ggml-base.en.bin",
