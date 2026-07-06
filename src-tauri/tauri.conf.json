@@ -42,12 +42,10 @@
       "icons/icon.ico"
     ],
     "resources": [
-      {
-        "../models/whisper/ggml-base.en.bin": "models/whisper/ggml-base.en.bin",
-        "../models/whisper/ggml-nigerian.bin": "models/whisper/ggml-nigerian.bin",
-        "../data/lifestone.db": "lifestone.db",
-        "../models/minilm-onnx/onnx/model.onnx": "models/minilm-onnx/onnx/model.onnx"
-      }
+      "../models/whisper/ggml-base.en.bin",
+      "../models/whisper/ggml-nigerian.bin",
+      "../data/lifestone.db",
+      "../models/minilm-onnx/onnx/model.onnx"
     ],
     "windows": {
       "certificateThumbprint": null,
