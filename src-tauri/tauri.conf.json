@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.openbezal.rhema",
   "build": {
     "frontendDist": "../build",
@@ -44,12 +44,14 @@
     "externalBin": [
       "binaries/ppt_sidecar"
     ],
-    "resources": {
-      "../models/whisper/ggml-base.en.bin": "models/whisper/ggml-base.en.bin",
-      "../models/whisper/ggml-nigerian.bin": "models/whisper/ggml-nigerian.bin",
-      "../data/lifestone.db": "lifestone.db",
-      "../models/minilm-onnx/onnx/model.onnx": "models/minilm-onnx/onnx/model.onnx"
-    },
+    "resources": [
+      {
+        "../models/whisper/ggml-base.en.bin": "models/whisper/ggml-base.en.bin",
+        "../models/whisper/ggml-nigerian.bin": "models/whisper/ggml-nigerian.bin",
+        "../data/lifestone.db": "lifestone.db",
+        "../models/minilm-onnx/onnx/model.onnx": "models/minilm-onnx/onnx/model.onnx"
+      }
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
