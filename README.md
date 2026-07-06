@@ -1,6 +1,5 @@
-<p align="center">
-  <img src="public/lifestone.svg" alt="Lifestone logo" width="160" height="160" />
-</p>
+<img width="1024" height="1024" alt="app-icon-square" src="https://github.com/user-attachments/assets/88280d88-f88c-413c-ad23-35b9c195e674" />
+
 
 <h1 align="center">Lifestone</h1>
 
