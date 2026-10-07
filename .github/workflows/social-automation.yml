@@ -1,0 +1,43 @@
+name: Social Media Automation
+
+on:
+  release:
+    types: [published]
+  schedule:
+    # Run at 10 AM UTC every Wednesday
+    - cron: '0 10 * * 3'
+  workflow_dispatch:
+    inputs:
+      tweet_text:
+        description: 'Text to tweet (leave blank for default promotional tweet)'
+        required: false
+        type: string
+
+jobs:
+  tweet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install twitter-api-v2
+          
+      - name: Send Tweet
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+        run: |
+          if [ -n "${{ github.event.inputs.tweet_text }}" ]; then
+            node .github/scripts/twitter-bot.js "${{ github.event.inputs.tweet_text }}"
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            node .github/scripts/twitter-bot.js "🚀 New Release: ${{ github.event.release.name }}! Download the latest version of Lifestone Church AI here: https://lifestone-church-ai.vercel.app/download #ChurchTech #AI"
+          else
+            node .github/scripts/twitter-bot.js
+          fi
