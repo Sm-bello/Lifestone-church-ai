@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { IconBrandGithub, IconMenu2, IconX } from "@tabler/icons-react";
 import { Button } from "../ui/button";
-import { LifestoneLogo } from "../ui/rhema-logo";
+import { LifestoneLogo } from "../ui/lifestone-logo";
 import { SITE } from "../../_lib/site";
 import { cn } from "../../_lib/utils";
 

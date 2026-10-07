@@ -1,6 +1,6 @@
 # Lifestone marketing site
 
-Next.js 16 marketing site for [Lifestone](https://openrhema.com). Static-only — no API routes, no server actions. Deployed to GitHub Pages on push to `main`.
+Next.js 16 marketing site for [Lifestone](https://lifestone-church-ai.vercel.app). Static-only — no API routes, no server actions. Deployed to GitHub Pages on push to `main`.
 
 ## Develop
 
@@ -22,7 +22,7 @@ Outputs a static site to `web/out/`.
 
 ## Deploy
 
-Pushes to `main` that touch `web/**` trigger `.github/workflows/deploy-web.yml`, which builds the static export and publishes it to GitHub Pages at [https://openrhema.com](https://openrhema.com).
+Pushes to `main` that touch `web/**` trigger `.github/workflows/deploy-web.yml`, which builds the static export and publishes it to GitHub Pages at [https://lifestone-church-ai.vercel.app](https://lifestone-church-ai.vercel.app).
 
 To trigger a deploy without code changes (e.g., to refresh the GitHub stars count baked into the page), use the **Run workflow** button on the *Deploy web to GitHub Pages* action in the GitHub UI.
 

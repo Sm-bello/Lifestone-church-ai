@@ -1,6 +1,6 @@
 ---
 title: Remote Control API
-description: Wire-level reference for the OSC addresses and HTTP endpoints that drive Rhema from external controllers.
+description: Wire-level reference for the OSC addresses and HTTP endpoints that drive Lifestone from external controllers.
 icon: Webhook
 ---
 
@@ -31,21 +31,21 @@ Commands are case-insensitive on input. `value` argument types vary:
 ## OSC
 
 OSC runs over UDP on port `8000` (configurable). Address pattern is
-`/rhema/<command>`. Type coercion is permissive — `int`, `float`, and
+`/lifestone/<command>`. Type coercion is permissive — `int`, `float`, and
 `bool` argument types are coerced to the target command variant
 without error, so any controller's idea of how to send a number
 works.
 
 | Address | Argument | Example |
 | --- | --- | --- |
-| `/rhema/next` | none | `oscsend localhost 8000 /rhema/next` |
-| `/rhema/prev` | none | `oscsend localhost 8000 /rhema/prev` |
-| `/rhema/show` | none | `oscsend localhost 8000 /rhema/show` |
-| `/rhema/hide` | none | `oscsend localhost 8000 /rhema/hide` |
-| `/rhema/theme` | string | `oscsend localhost 8000 /rhema/theme s "Classic Dark"` |
-| `/rhema/opacity` | float | `oscsend localhost 8000 /rhema/opacity f 0.75` |
-| `/rhema/confidence` | float | `oscsend localhost 8000 /rhema/confidence f 0.8` |
-| `/rhema/on_air` | bool | `oscsend localhost 8000 /rhema/on_air T` |
+| `/lifestone/next` | none | `oscsend localhost 8000 /lifestone/next` |
+| `/lifestone/prev` | none | `oscsend localhost 8000 /lifestone/prev` |
+| `/lifestone/show` | none | `oscsend localhost 8000 /lifestone/show` |
+| `/lifestone/hide` | none | `oscsend localhost 8000 /lifestone/hide` |
+| `/lifestone/theme` | string | `oscsend localhost 8000 /lifestone/theme s "Classic Dark"` |
+| `/lifestone/opacity` | float | `oscsend localhost 8000 /lifestone/opacity f 0.75` |
+| `/lifestone/confidence` | float | `oscsend localhost 8000 /lifestone/confidence f 0.8` |
+| `/lifestone/on_air` | bool | `oscsend localhost 8000 /lifestone/on_air T` |
 
 ## HTTP API
 
@@ -62,7 +62,7 @@ curl http://localhost:8080/api/v1/health
 ```
 
 ```json
-{ "status": "ok", "service": "rhema", "version": "..." }
+{ "status": "ok", "service": "lifestone", "version": "..." }
 ```
 
 ### `GET /api/v1/status`
@@ -116,7 +116,7 @@ proxy when you expose it.
 ## Persistence and shutdown semantics
 
 Both listeners can be started and stopped at runtime without
-restarting Rhema. Port-bind failures surface as visible errors in
+restarting Lifestone. Port-bind failures surface as visible errors in
 the Settings panel rather than silent listener crashes. Both
 listeners shut down cleanly on app exit — no zombie threads, no
 orphaned ports.

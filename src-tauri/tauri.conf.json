@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
   "version": "1.0.1",
-  "identifier": "com.openbezal.rhema",
+  "identifier": "com.openbezal.lifestone",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:5173",

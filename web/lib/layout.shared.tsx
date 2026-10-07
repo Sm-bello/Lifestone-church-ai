@@ -1,6 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { SITE } from "@/app/_lib/site";
-import { LifestoneLogo } from "@/app/_components/ui/rhema-logo";
+import { LifestoneLogo } from "@/app/_components/ui/lifestone-logo";
 
 export function baseOptions(): BaseLayoutProps {
   return {

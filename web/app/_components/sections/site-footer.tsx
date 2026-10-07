@@ -8,7 +8,7 @@ import {
   IconMail,
 } from "@tabler/icons-react";
 import { Container } from "../ui/container";
-import { LifestoneLogo } from "../ui/rhema-logo";
+import { LifestoneLogo } from "../ui/lifestone-logo";
 import { SITE } from "../../_lib/site";
 
 const GROUPS = [

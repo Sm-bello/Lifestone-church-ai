@@ -6,7 +6,7 @@ icon: Mic2
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rhema listens for a small set of voice commands so you don't have to
+Lifestone listens for a small set of voice commands so you don't have to
 break flow at the lectern. Commands are recognized inline with the
 sermon transcript — there's no wake word and no separate listening mode.
 
@@ -37,7 +37,7 @@ lives in `src-tauri/crates/detection/src/direct/detector.rs`.
 ## Chapter navigation in reading mode
 
 When the pastor announces a passage to read through ("Let's turn to
-**Romans 8**"), Rhema enters reading mode and the queue locks to that
+**Romans 8**"), Lifestone enters reading mode and the queue locks to that
 chapter. Voice commands then advance through the text — these are the
 exact patterns the detector matches in
 `src-tauri/crates/detection/src/reading_mode.rs`:

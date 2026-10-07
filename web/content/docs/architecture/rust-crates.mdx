@@ -12,61 +12,61 @@ dependencies follow a strict downward fan-out from the API layer.
 
 | Crate | Responsibility |
 | --- | --- |
-| `rhema-audio` | Audio device enumeration, capture, voice activity detection (cpal) |
-| `rhema-stt` | Deepgram STT WebSocket + REST fallback; Whisper local engine |
-| `rhema-bible` | SQLite Bible database, FTS5 search, cross-references |
-| `rhema-detection` | Verse detection pipeline: direct, semantic, quotation, ensemble merger, sentence buffer, sermon context, reading mode |
-| `rhema-broadcast` | NDI video frame output via FFI |
-| `rhema-api` | Tauri command API layer — the only crate that touches Tauri |
-| `rhema-notes` | (placeholder for upcoming sermon notes feature) |
+| `lifestone-audio` | Audio device enumeration, capture, voice activity detection (cpal) |
+| `lifestone-stt` | Deepgram STT WebSocket + REST fallback; Whisper local engine |
+| `lifestone-bible` | SQLite Bible database, FTS5 search, cross-references |
+| `lifestone-detection` | Verse detection pipeline: direct, semantic, quotation, ensemble merger, sentence buffer, sermon context, reading mode |
+| `lifestone-broadcast` | NDI video frame output via FFI |
+| `lifestone-api` | Tauri command API layer — the only crate that touches Tauri |
+| `lifestone-notes` | (placeholder for upcoming sermon notes feature) |
 
 ## Why split this way
 
 Each crate maps to a clear external responsibility:
 
-- **`rhema-audio`** owns the operating system. Anything device-specific —
+- **`lifestone-audio`** owns the operating system. Anything device-specific —
   enumeration, capture buffers, sample-rate conversion, VAD — lives
   here so the rest of the workspace can pretend audio is just bytes.
 
-- **`rhema-stt`** owns network and local STT. Both Whisper and Deepgram
+- **`lifestone-stt`** owns network and local STT. Both Whisper and Deepgram
   emit the same transcript event type, so the consumer doesn't know
   (or care) which engine is wired in.
 
-- **`rhema-bible`** owns the database. FTS5 query construction,
+- **`lifestone-bible`** owns the database. FTS5 query construction,
   cross-reference joins, BM25 ranking — all of it is encapsulated
   behind a small set of typed read paths.
 
-- **`rhema-detection`** owns the pipeline. It depends on `rhema-bible`
+- **`lifestone-detection`** owns the pipeline. It depends on `lifestone-bible`
   for verse text and reference lookup, but otherwise it's self-
   contained and testable with synthetic transcripts.
 
-- **`rhema-broadcast`** owns NDI. It loads the SDK dynamically and
+- **`lifestone-broadcast`** owns NDI. It loads the SDK dynamically and
   exposes a `start_sender`/`send_frame`/`stop_sender` API. Other
   crates don't include the FFI surface at all.
 
-- **`rhema-api`** owns Tauri. Every Tauri command lives here. Other
+- **`lifestone-api`** owns Tauri. Every Tauri command lives here. Other
   crates don't depend on Tauri, which means the workspace can be
   built and tested as plain Rust without the Tauri shell.
 
-- **`rhema-notes`** is a placeholder. Its `lib.rs` reads
+- **`lifestone-notes`** is a placeholder. Its `lib.rs` reads
   *"Planned: Claude API integration, sermon note generation, and
   PDF/Markdown export"* — none of that is implemented yet.
 
 ## Dependency graph
 
-![Dependency graph of the seven Rust crates fanning out from rhema-api with two internal cross-deps](/docs/diagrams/diagram-crate-dependencies.svg)
+![Dependency graph of the seven Rust crates fanning out from lifestone-api with two internal cross-deps](/docs/diagrams/diagram-crate-dependencies.svg)
 
-*The fan-out from `rhema-api` down through audio, stt, bible, detection, broadcast, and notes. Edges are strictly downward; no cycles. **Click to expand.***
+*The fan-out from `lifestone-api` down through audio, stt, bible, detection, broadcast, and notes. Edges are strictly downward; no cycles. **Click to expand.***
 
 
 ```
-rhema-api
-├── rhema-audio
-├── rhema-stt        ───→  rhema-audio
-├── rhema-bible
-├── rhema-detection  ───→  rhema-bible
-├── rhema-broadcast
-└── rhema-notes
+lifestone-api
+├── lifestone-audio
+├── lifestone-stt        ───→  lifestone-audio
+├── lifestone-bible
+├── lifestone-detection  ───→  lifestone-bible
+├── lifestone-broadcast
+└── lifestone-notes
 ```
 
 The graph is strictly downward — no cycles, no horizontal
@@ -79,9 +79,9 @@ testable.
 Two crates are gated behind Cargo features so the workspace stays
 buildable on minimal toolchains:
 
-- `rhema-stt` exposes a `whisper` feature (`whisper-rs = "0.16"`,
+- `lifestone-stt` exposes a `whisper` feature (`whisper-rs = "0.16"`,
   `optional = true`). The Deepgram path is always available.
-- `rhema-detection` exposes `onnx` (turns on `ort = "2.0.0-rc.12"`)
+- `lifestone-detection` exposes `onnx` (turns on `ort = "2.0.0-rc.12"`)
   and `vector-search` features.
 
 The default crate features in `src-tauri/Cargo.toml` enable both ONNX

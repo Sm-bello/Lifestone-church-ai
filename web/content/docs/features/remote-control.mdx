@@ -1,12 +1,12 @@
 ---
 title: Remote Control
-description: Drive Rhema from Stream Deck, TouchOSC, or any HTTP client via OSC and a REST API.
+description: Drive Lifestone from Stream Deck, TouchOSC, or any HTTP client via OSC and a REST API.
 icon: Gamepad2
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Live operators rarely have a free hand on a keyboard. Rhema exposes its
+Live operators rarely have a free hand on a keyboard. Lifestone exposes its
 controls over **OSC** and an **HTTP API** so you can wire them into
 hardware controllers, automation scripts, and stage-management
 software. Both protocols can run simultaneously and share the same
@@ -15,7 +15,7 @@ command set.
 <Callout title="In-depth guide" type="info">
 This page is a high-level overview. The full protocol reference,
 authentication notes, and example payloads live in the
-[remote control guide](https://github.com/openbezal/rhema/blob/main/documentation/remote-control.md)
+[remote control guide](https://github.com/Sm-bello/Lifestone-church-ai/blob/main/documentation/remote-control.md)
 in the repository.
 </Callout>
 
@@ -34,13 +34,13 @@ Settings → Remote for local-only access.
 
 | Action | OSC address | HTTP body (POST `/api/v1/control`) |
 | --- | --- | --- |
-| Next verse in queue | `/rhema/next` | `{ "command": "next" }` |
-| Previous verse | `/rhema/prev` | `{ "command": "prev" }` |
-| Show / hide overlay | `/rhema/show`, `/rhema/hide` | `{ "command": "show" }` |
-| Switch theme | `/rhema/theme "Classic Dark"` | `{ "command": "theme", "value": "Classic Dark" }` |
-| Set opacity | `/rhema/opacity 0.75` | `{ "command": "opacity", "value": 0.75 }` |
-| Set confidence threshold | `/rhema/confidence 0.8` | `{ "command": "confidence", "value": 0.8 }` |
-| Toggle on-air | `/rhema/on_air true` | `{ "command": "on_air", "value": true }` |
+| Next verse in queue | `/lifestone/next` | `{ "command": "next" }` |
+| Previous verse | `/lifestone/prev` | `{ "command": "prev" }` |
+| Show / hide overlay | `/lifestone/show`, `/lifestone/hide` | `{ "command": "show" }` |
+| Switch theme | `/lifestone/theme "Classic Dark"` | `{ "command": "theme", "value": "Classic Dark" }` |
+| Set opacity | `/lifestone/opacity 0.75` | `{ "command": "opacity", "value": 0.75 }` |
+| Set confidence threshold | `/lifestone/confidence 0.8` | `{ "command": "confidence", "value": 0.8 }` |
+| Toggle on-air | `/lifestone/on_air true` | `{ "command": "on_air", "value": true }` |
 
 All eight commands work identically across both protocols, so any
 controller you already own (or build) talks the same dialect.
@@ -63,7 +63,7 @@ Settings → Remote, and send messages from your favorite controller:
 - **A simple test from the command line**:
 
   ```bash
-  oscsend localhost 8000 /rhema/next
+  oscsend localhost 8000 /lifestone/next
   ```
 
 The Settings panel shows a **live command log** with timestamps so you
@@ -118,8 +118,8 @@ down cleanly on app exit (no zombie threads, no orphaned ports).
 
 By default, both protocols bind to `0.0.0.0` and the HTTP server
 attaches a **permissive CORS layer**, so any origin on the network can
-call the API. Before exposing Rhema beyond a trusted local network,
+call the API. Before exposing Lifestone beyond a trusted local network,
 bind to `127.0.0.1` in Settings, or front it with a reverse proxy that
 adds authentication and TLS. The repo's
-[remote control guide](https://github.com/openbezal/rhema/blob/main/documentation/remote-control.md#security-considerations)
+[remote control guide](https://github.com/Sm-bello/Lifestone-church-ai/blob/main/documentation/remote-control.md#security-considerations)
 covers the threat model in more depth.

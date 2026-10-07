@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Clone, install dependencies, and run the seven-phase data setup so Rhema is ready for development.
+description: Clone, install dependencies, and run the seven-phase data setup so Lifestone is ready for development.
 icon: Download
 ---
 
@@ -24,8 +24,8 @@ The Windows bootstrap installs LLVM and CMake via `winget` and persists
 ### Clone the repository
 
 ```bash
-git clone https://github.com/openbezal/rhema.git
-cd rhema
+git clone https://github.com/Sm-bello/Lifestone-church-ai.git
+cd lifestone
 ```
 
   </Step>
@@ -61,7 +61,7 @@ runs seven phases in this exact order:
    contains all ten translations (KJV, NIV, ESV, NASB, NKJV, NLT,
    AMP, SpaRV, FreJND, PorBLivre) plus the cross-reference dataset
    from openbible.info.
-3. **SQLite database** — assembles `data/rhema.db` with FTS5
+3. **SQLite database** — assembles `data/lifestone.db` with FTS5
    virtual tables and cross-reference tables.
 4. **ONNX model** — downloads `Qwen3/Qwen3-Embedding-0.6B`, exports
    it via `optimum-cli export onnx`, and quantizes to INT8 for
@@ -114,7 +114,7 @@ bun run download:ndi-sdk
 ```
 
 This drops the platform-specific NDI 6 headers and shared libraries under
-`sdk/ndi/`, where the `rhema-broadcast` crate finds them via dynamic
+`sdk/ndi/`, where the `lifestone-broadcast` crate finds them via dynamic
 loading.
 
 ## Running individual phases

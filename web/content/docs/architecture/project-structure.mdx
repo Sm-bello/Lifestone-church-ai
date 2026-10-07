@@ -10,7 +10,7 @@ The repo is a polyglot monorepo with a React frontend, a Rust workspace
 backend, a Bun-driven data pipeline, and a Next.js marketing/docs site.
 
 <Files>
-  <Folder name="rhema" defaultOpen>
+  <Folder name="lifestone" defaultOpen>
     <Folder name="src" defaultOpen>
       <Folder name="components">
         <File name="broadcast/    — Theme designer, NDI settings" />
@@ -94,7 +94,7 @@ backend, a Bun-driven data pipeline, and a Next.js marketing/docs site.
 - Each crate has a single owner concept (audio, STT, Bible, detection,
   broadcast, API). Adding a new sense — say, a transcription engine —
   means a new module in the existing crate, not a new crate.
-- Tauri command handlers live in `rhema-api`. Other crates expose
+- Tauri command handlers live in `lifestone-api`. Other crates expose
   pure Rust surfaces and never import `tauri::`.
 
 ## Data pipeline conventions

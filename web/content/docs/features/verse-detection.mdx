@@ -7,7 +7,7 @@ icon: Search
 import { Callout } from "fumadocs-ui/components/callout";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 
-Rhema's detector doesn't bet on a single signal. Pastors cite scripture in
+Lifestone's detector doesn't bet on a single signal. Pastors cite scripture in
 many ways — exact references ("First Corinthians 13:4"), paraphrases, partial
 quotations, or by simply moving through a chapter — and a single technique
 misses too many of them. The detector runs four strategies in parallel and
@@ -24,7 +24,7 @@ merges their outputs through an ensemble pass.
 ### Direct reference parsing
 
 A precompiled **Aho-Corasick automaton** (`aho-corasick = "1"` in
-`rhema-detection`) scans the transcript for canonical book names and
+`lifestone-detection`) scans the transcript for canonical book names and
 abbreviations. When a hit is followed by a chapter/verse pattern, the
 detector emits a high-confidence reference.
 
@@ -81,7 +81,7 @@ like references but aren't, while the pastor is in expository mode.
 Earlier copy described an optional OpenAI/Claude "cloud booster"
 that re-ranks ambiguous candidates. The settings store reserves
 fields for `openaiApiKey` / `claudeApiKey`, but the booster itself
-is not implemented in `rhema-detection` today. Detection runs
+is not implemented in `lifestone-detection` today. Detection runs
 entirely locally.
 </Callout>
 
@@ -107,7 +107,7 @@ words arrive.
 
 ## Sermon context tracking
 
-Pastors quote across a sermon's arc. Rhema keeps a rolling **sermon
+Pastors quote across a sermon's arc. Lifestone keeps a rolling **sermon
 context** of recent books and themes that the semantic strategy uses
 to disambiguate. If you've spent the last ten minutes in Romans 8, a
 passing reference to "by faith" is more likely Romans 8 than Hebrews
@@ -116,6 +116,6 @@ passing reference to "by faith" is more likely Romans 8 than Hebrews
 ## Threshold tuning
 
 The confidence threshold is exposed as a UI control and via the remote
-control API (`/rhema/confidence`). Bumping it up reduces false positives
+control API (`/lifestone/confidence`). Bumping it up reduces false positives
 on noisy services; lowering it surfaces more candidates for manual
 queueing.

@@ -6,7 +6,7 @@ icon: Shield
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rhema runs as a Tauri v2 desktop app, which means a Chromium-derived
+Lifestone runs as a Tauri v2 desktop app, which means a Chromium-derived
 WebView with elevated privileges (filesystem, IPC, network).
 Compromising the WebView would compromise the host. We treat that
 seriously.
@@ -54,13 +54,13 @@ A few things worth calling out:
 <Callout title="Please report privately first" type="warn">
 If you find a security issue, **do not open a public GitHub issue.**
 Send a private report by following the instructions in
-[SECURITY.md](https://github.com/openbezal/rhema/blob/main/.github/SECURITY.md)
+[SECURITY.md](https://github.com/Sm-bello/Lifestone-church-ai/blob/main/.github/SECURITY.md)
 in the repo.
 </Callout>
 
 ## Tauri capabilities
 
-Rhema follows Tauri v2's principle-of-least-privilege capability
+Lifestone follows Tauri v2's principle-of-least-privilege capability
 system. Capability files live under `src-tauri/capabilities/` —
 today there are two: `default.json` and `desktop.json`.
 
@@ -68,7 +68,7 @@ If you're reviewing the codebase for security:
 
 1. Start at `src-tauri/capabilities/*.json` to see which Tauri
    commands and plugins are reachable from each window.
-2. Trace each granted command to its handler in `rhema-api`.
+2. Trace each granted command to its handler in `lifestone-api`.
 3. Audit the handler's input validation and side effects.
 
 ## Remote control defaults — read carefully
@@ -91,7 +91,7 @@ LAN-only use case (Stream Deck on your operator's laptop), but it is
 **unsafe** to leave on once the listener is reachable from a
 broader network.
 
-Before exposing Rhema beyond a trusted LAN:
+Before exposing Lifestone beyond a trusted LAN:
 
 1. Bind both listeners to `127.0.0.1` from Settings → Remote.
 2. Or front them with a reverse proxy that adds authentication and
@@ -104,7 +104,7 @@ already trust.
 
 ## Defaults that protect the operator
 
-- **No telemetry** — Rhema does not phone home. There's no
+- **No telemetry** — Lifestone does not phone home. There's no
   analytics, no crash reporter, no usage tracking.
 - **Local-first by default** — Whisper runs locally, the database
   lives on disk, and Deepgram is opt-in. No keys, no internet, no

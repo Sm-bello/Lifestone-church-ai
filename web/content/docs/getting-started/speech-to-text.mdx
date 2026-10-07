@@ -7,7 +7,7 @@ icon: Mic
 import { Callout } from "fumadocs-ui/components/callout";
 import { Card, Cards } from "fumadocs-ui/components/card";
 
-Rhema supports two STT engines, and you can swap between them at runtime
+Lifestone supports two STT engines, and you can swap between them at runtime
 from the settings dialog. They map cleanly to two different operating
 modes: zero-marginal-cost local inference, or offload-to-the-cloud
 streaming.
@@ -27,7 +27,7 @@ streaming.
 
 The Whisper integration uses [`whisper.cpp`](https://github.com/ggerganov/whisper.cpp)
 through the `whisper-rs = "0.16"` Rust crate (gated behind the
-`whisper` feature on `rhema-stt`). The first `cargo build` compiles
+`whisper` feature on `lifestone-stt`). The first `cargo build` compiles
 the C++ source via `bindgen`.
 
 The model file (`ggml-large-v3-turbo-q8_0.bin`) is downloaded once
@@ -50,7 +50,7 @@ exact commands.
 ## Option 2: Deepgram
 
 Deepgram is a cloud speech-to-text service that streams audio over a
-WebSocket. Rhema also has a REST fallback that re-uploads short windows if
+WebSocket. Lifestone also has a REST fallback that re-uploads short windows if
 the WebSocket disconnects.
 
 ### 1. Get an API key

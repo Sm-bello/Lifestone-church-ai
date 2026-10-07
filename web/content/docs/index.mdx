@@ -18,16 +18,16 @@ import {
   Rocket,
 } from "lucide-react";
 
-Rhema listens to a live sermon audio feed, transcribes speech in real time,
+Lifestone listens to a live sermon audio feed, transcribes speech in real time,
 detects Bible verse references — both explicit citations and quoted
 passages — and renders them as broadcast-ready overlays via NDI for live
 production.
 
-![Rhema desktop app — live transcript on the left, detections in the centre, queue and live preview on the right](/docs/screenshots/dashboard-overview.png)
+![Lifestone desktop app — live transcript on the left, detections in the centre, queue and live preview on the right](/docs/screenshots/dashboard-overview.png)
 
-*The Rhema dashboard during a service: live transcript on the left, detected verses in the centre column, and the verse queue plus broadcast preview on the right. **Click to expand.***
+*The Lifestone dashboard during a service: live transcript on the left, detected verses in the centre column, and the verse queue plus broadcast preview on the right. **Click to expand.***
 
-## What you can do with Rhema
+## What you can do with Lifestone
 
 <Cards>
   <Card
@@ -48,7 +48,7 @@ production.
   <Card
     icon={<Languages />}
     title="Switch translations on the fly"
-    description='Say "read in NIV" mid-sermon and Rhema swaps the active translation without breaking the queue.'
+    description='Say "read in NIV" mid-sermon and Lifestone swaps the active translation without breaking the queue.'
   />
 </Cards>
 
@@ -63,7 +63,7 @@ list.
 </Callout>
 
 ```bash
-git clone https://github.com/openbezal/rhema.git && cd rhema
+git clone https://github.com/Sm-bello/Lifestone-church-ai.git && cd lifestone
 bun install && bun run setup:all
 bun run tauri dev
 ```
@@ -75,7 +75,7 @@ for a guided walkthrough.
 
 ## How it's built
 
-![Rhema pipeline — audio capture flows through speech-to-text, the detection pipeline, the queue, and finally the NDI sender that downstream switchers consume](/docs/diagrams/diagram-pipeline-flow.svg)
+![Lifestone pipeline — audio capture flows through speech-to-text, the detection pipeline, the queue, and finally the NDI sender that downstream switchers consume](/docs/diagrams/diagram-pipeline-flow.svg)
 
 *The five stages, in order: capture → transcribe → detect → curate → broadcast. The detection stage is the one that runs all four strategies in parallel and merges them. **Click to expand.***
 
@@ -112,7 +112,7 @@ for a guided walkthrough.
 <Cards>
   <Card
     icon={<Rocket />}
-    title="Install Rhema"
+    title="Install Lifestone"
     description="Step-by-step guide from clone through first run — including platform-specific build tools."
     href="/docs/getting-started/installation"
   />

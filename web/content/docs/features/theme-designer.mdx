@@ -29,7 +29,7 @@ NDI exactly as designed.
 
 ## Built-in starters
 
-Rhema ships with three opinionated starter themes (`src/lib/builtin-themes.ts`)
+Lifestone ships with three opinionated starter themes (`src/lib/builtin-themes.ts`)
 that you can clone and modify:
 
 - **Classic Dark** — a high-contrast dark overlay tuned for typical
@@ -52,7 +52,7 @@ re-export.
 Themes can be activated from:
 
 - The theme picker in the transport bar.
-- A Stream Deck or other OSC controller (`/rhema/theme`).
+- A Stream Deck or other OSC controller (`/lifestone/theme`).
 - The HTTP control endpoint (`POST /api/v1/control` with `{ "command": "theme", "value": "Classic Dark" }`).
 
 The currently active theme is reflected in the **preview** panel before
@@ -61,7 +61,7 @@ it goes on-air, and committed to NDI when you toggle the on-air switch.
 <Callout title="Resolution and color space" type="info">
 NDI output is composited at the exact pixel dimensions of the canvas. If
 your downstream switcher (vMix, OBS, Resolume) expects 1920×1080 with
-straight alpha, set the canvas to that and Rhema sends straight alpha
+straight alpha, set the canvas to that and Lifestone sends straight alpha
 NDI frames natively.
 </Callout>
 
