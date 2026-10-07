@@ -18,12 +18,14 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-          - platform: 'ubuntu-22.04'
+          - platform: 'ubuntu-24.04'
             args: ''
           - platform: 'windows-latest'
             args: '--config src-tauri/tauri.windows.conf.json'
 
     runs-on: ${{ matrix.platform }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,7 +65,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies (Ubuntu)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
