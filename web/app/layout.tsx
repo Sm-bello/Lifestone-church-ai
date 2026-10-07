@@ -4,8 +4,8 @@ import "./globals.css";
 import { SITE } from "./_lib/site";
 import { StructuredData } from "./_components/seo/structured-data";
 
-const TITLE = `${SITE.name} — AI Bible verse detection for live sermons`;
-const OG_TITLE = `${SITE.name} — ${SITE.tagline}`;
+const TITLE = `${SITE.name} — ${SITE.tagline}`;
+const OG_TITLE = TITLE;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),

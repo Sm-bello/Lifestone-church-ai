@@ -1,12 +1,12 @@
 export const SITE = {
   name: "Lifestone",
   legalName: "WHITE HORSE",
-  tagline: "AI-powered sermon intelligence for live ministry.",
+  tagline: "AI Bible Verse Detection & Scripture Projection for Churches",
   shortDescription:
-    "Lifestone listens to the sermon, recognizes Scripture, and puts the right passage on screen — in real time.",
+    "Lifestone is free, open-source church presentation software that listens to live sermons, detects Bible verses in real time, and displays Scripture automatically through HDMI, NDI, OBS, and vMix.",
   description:
-    "Lifestone is an AI co-pilot for live sermons. It listens to a live sermon audio feed, transcribes speech locally in real time, detects Bible verse references (both explicit citations and quoted passages), and renders them as broadcast-ready overlays for your live production.",
-  url: "https://lifestone.whitehorse.com",
+    "Lifestone is free, open-source church presentation software that listens to live sermons, detects Bible verses in real time, and displays Scripture automatically through HDMI, NDI, OBS, and vMix.",
+  url: "https://lifestone-church-ai.vercel.app",
   locale: "en_US",
   twitterHandle: "@whitehorse",
   founded: "2026",
