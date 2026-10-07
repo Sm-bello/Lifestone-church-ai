@@ -1,4 +1,4 @@
-﻿mod commands;
+mod commands;
 mod events;
 mod memstats;
 mod state;
@@ -93,7 +93,14 @@ pub fn run() {
                 log::warn!("Bible database not found at {}", db_path.display());
             }
 
-            let base_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+            let base_dir = app
+                .path()
+                .resource_dir()
+                .ok()
+                .filter(|p| p.join("models").exists())
+                .unwrap_or_else(|| {
+                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
+                });
             let model_path = {
                 let minilm = base_dir.join("models/minilm-onnx/onnx/model.onnx");
                 if minilm.exists() {
