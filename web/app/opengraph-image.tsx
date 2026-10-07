@@ -10,8 +10,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const iconSvg = readFileSync(join(__dirname, "icon.svg"), "utf8");
-const iconDataUrl = `data:image/svg+xml;base64,${Buffer.from(iconSvg).toString("base64")}`;
+const iconBuffer = readFileSync(join(__dirname, "icon.png"));
+const iconDataUrl = `data:image/png;base64,${iconBuffer.toString("base64")}`;
 
 export default async function Image() {
   return new ImageResponse(
@@ -21,8 +21,8 @@ export default async function Image() {
           width: "100%",
           height: "100%",
           background:
-            "radial-gradient(60% 50% at 50% 0%, rgba(0,153,255,0.28) 0%, rgba(0,153,255,0.06) 40%, transparent 70%), #000000",
-          color: "#FFFFFF",
+            "radial-gradient(60% 50% at 50% 0%, rgba(25,215,255,0.20) 0%, rgba(22,119,255,0.08) 40%, transparent 70%), #07111F",
+          color: "#F7FAFF",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -35,7 +35,7 @@ export default async function Image() {
             display: "flex",
             alignItems: "center",
             gap: 16,
-            color: "rgba(255,255,255,0.7)",
+            color: "rgba(247,250,255,0.7)",
             fontSize: 28,
             letterSpacing: "-0.02em",
           }}
@@ -48,9 +48,9 @@ export default async function Image() {
             alt=""
             style={{ borderRadius: 12, display: "block" }}
           />
-          <span style={{ color: "#FFFFFF", fontWeight: 600 }}>{SITE.name}</span>
+          <span style={{ color: "#F7FAFF", fontWeight: 600 }}>WHITE HORSE</span>
           <span>·</span>
-          <span>openrhema.com</span>
+          <span>lifestone.whitehorse.com</span>
         </div>
 
         <div
@@ -67,33 +67,32 @@ export default async function Image() {
               lineHeight: 1.02,
               letterSpacing: "-0.05em",
               fontWeight: 600,
-              color: "#FFFFFF",
+              color: "#F7FAFF",
             }}
           >
-            Your Pastor speaks.
+            LIFESTONE
           </div>
           <div
             style={{
-              fontSize: 88,
-              lineHeight: 1.02,
-              letterSpacing: "-0.05em",
-              fontWeight: 600,
-              color: "#0099FF",
+              fontSize: 56,
+              lineHeight: 1.1,
+              letterSpacing: "-0.03em",
+              fontWeight: 500,
+              color: "#19D7FF",
             }}
           >
-            Lifestone finds the verse.
+            {SITE.tagline}
           </div>
           <div
             style={{
               fontSize: 28,
               lineHeight: 1.4,
-              color: "rgba(255,255,255,0.7)",
+              color: "rgba(247,250,255,0.7)",
               maxWidth: 880,
               marginTop: 12,
             }}
           >
-            Real-time AI Bible verse detection for live sermons. Scripture
-            on screen the instant it&apos;s spoken — broadcast-ready via NDI.
+            {SITE.shortDescription}
           </div>
         </div>
 
@@ -102,19 +101,10 @@ export default async function Image() {
             display: "flex",
             gap: 12,
             alignItems: "center",
-            color: "rgba(255,255,255,0.6)",
+            color: "rgba(247,250,255,0.6)",
             fontSize: 22,
           }}
         >
-          <span
-            style={{
-              padding: "8px 16px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.18)",
-            }}
-          >
-            Free · Open source
-          </span>
           <span
             style={{
               padding: "8px 16px",
@@ -131,7 +121,16 @@ export default async function Image() {
               border: "1px solid rgba(255,255,255,0.18)",
             }}
           >
-            NDI · OBS · vMix
+            Local AI
+          </span>
+          <span
+            style={{
+              padding: "8px 16px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.18)",
+            }}
+          >
+            Broadcast Ready
           </span>
         </div>
       </div>
