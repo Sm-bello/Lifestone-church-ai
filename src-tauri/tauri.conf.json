@@ -54,7 +54,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [],
+    "resources": [
+      "../models/whisper/ggml-nigerian.bin",
+      "../data/lifestone.db",
+      "../models/minilm-onnx/onnx/model.onnx"
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

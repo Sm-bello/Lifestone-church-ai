@@ -27,10 +27,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
-      - name: Pull LFS files
-        run: git lfs pull
+      - name: Fetch Core AI Models
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "=== Downloading heavy AI models natively via GitHub bandwidth ==="
+          mkdir -p data
+          mkdir -p models/whisper
+          mkdir -p models/minilm-onnx/onnx
+          
+          gh release download v1.0.0-models -p "lifestone.db" -D data/ || echo "Warning: lifestone.db not found in release"
+          gh release download v1.0.0-models -p "ggml-nigerian.bin" -D models/whisper/ || echo "Warning: ggml-nigerian.bin not found"
+          gh release download v1.0.0-models -p "model.onnx" -D models/minilm-onnx/onnx/ || echo "Warning: model.onnx not found"
 
       - name: Verify bundled files
         shell: bash
