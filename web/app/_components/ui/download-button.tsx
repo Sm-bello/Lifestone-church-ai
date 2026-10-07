@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   IconBrandApple,
   IconBrandWindows,
@@ -32,9 +33,41 @@ export function DownloadButton({
   const copy = COPY[platform ?? "default"];
   const Icon = copy.icon;
 
+  const [downloadUrl, setDownloadUrl] = useState<string>(SITE.repo.releasesLatest);
+  
+  useEffect(() => {
+    async function fetchLatestRelease() {
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${SITE.repo.owner}/${SITE.repo.name}/releases/latest`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const assets = data.assets || [];
+          let targetAsset = null;
+
+          if (platform === "windows") {
+            targetAsset = assets.find((a: any) => a.name.endsWith("setup.exe"));
+          } else if (platform === "mac") {
+            targetAsset = assets.find((a: any) => a.name.endsWith(".dmg"));
+          } else if (platform === "linux") {
+            targetAsset = assets.find((a: any) => a.name.endsWith(".deb"));
+          }
+
+          if (targetAsset && targetAsset.browser_download_url) {
+            setDownloadUrl(targetAsset.browser_download_url);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch GitHub release", error);
+      }
+    }
+    fetchLatestRelease();
+  }, [platform]);
+
   return (
     <Button
-      href={SITE.repo.releasesLatest}
+      href={downloadUrl}
       variant="primary"
       size={size}
       className={className}
