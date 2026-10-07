@@ -22,9 +22,9 @@ export const SITE = {
   },
   socials: {
     github: "https://github.com/Sm-bello/Lifestone-church-ai",
-    twitter: "https://x.com/whitehorse",
-    linkedin: "https://www.linkedin.com/company/whitehorse",
-    email: "mailto:hello@whitehorse.com",
+    twitter: "https://x.com/calvaryarmies",
+    linkedin: "https://www.linkedin.com/in/mohammed-bello-sani-369a89284",
+    email: "mailto:calvaryarmies@gmail.com",
   },
   stats: {
     languages: "2+",
