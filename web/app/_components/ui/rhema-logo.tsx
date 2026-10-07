@@ -25,6 +25,7 @@ export function LifestoneLogo({
           "flex items-center justify-center text-foreground",
           iconSize
         )}
+      >
         <img src="/brand/lifestone-logo.png" alt="Lifestone" className="h-full w-auto object-contain drop-shadow-[0_0_12px_rgba(25,215,255,0.4)]" />
       </span>
       <span className={cn("font-medium text-foreground", textSize, wordmarkClassName)}>
