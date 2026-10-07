@@ -1,10 +1,10 @@
 import {
-  IconAdjustmentsHorizontal,
-  IconLayoutBoard,
   IconMicrophone,
-  IconPlug,
-  IconScreenShare,
-  IconSearch,
+  IconBook,
+  IconBolt,
+  IconLanguage,
+  IconLock,
+  IconAdjustmentsHorizontal,
 } from "@tabler/icons-react";
 import { Container } from "../ui/container";
 import { FeatureCard } from "../ui/feature-card";
@@ -22,33 +22,33 @@ type Feature = {
 const FEATURES: Feature[] = [
   {
     icon: IconMicrophone,
-    title: "Listens to Your Sermon Live",
-    body: "Lifestone listens as the pastor speaks and turns the message into text instantly. No setup or typing needed. Just press start and let it run.",
+    title: "Real-time transcription",
+    body: "Listen to sermons as they happen with high-accuracy voice recognition tailored for spoken ministry.",
   },
   {
-    icon: IconSearch,
-    title: "Finds Bible Verses Automatically",
-    body: "Detects Bible verses from both direct references and spoken quotes. It understands imperfect speech and partial phrasing.",
+    icon: IconBook,
+    title: "Scripture detection",
+    body: "Recognize explicit references and seamlessly identify quoted passages without manual entry.",
   },
   {
-    icon: IconScreenShare,
-    title: "Shows Verses On Screen Instantly",
-    body: "As soon as a verse is detected, it appears on screen right away. No delays. Your audience sees the scripture at the right moment.",
+    icon: IconBolt,
+    title: "Instant overlays",
+    body: "Send Scripture directly into your broadcast workflow the moment it is detected in speech.",
   },
   {
-    icon: IconPlug,
-    title: "Works With Your Live Setup",
-    body: "Lifestone connects easily to tools like OBS Studio and vMix. You don’t need to change how you already run your service. Just add it to your setup.",
+    icon: IconLanguage,
+    title: "Multiple translations",
+    body: "Switch Bible translations seamlessly during the service to match the pastor's context.",
   },
   {
-    icon: IconLayoutBoard,
-    title: "Ready-to-Use Verse Designs",
-    body: "Choose from clean, pre-made styles for your verse overlays. Everything is already designed for you. Pick one and go live.",
+    icon: IconLock,
+    title: "Local-first processing",
+    body: "Run advanced AI speech recognition completely locally with Whisper when configured.",
   },
   {
     icon: IconAdjustmentsHorizontal,
-    title: "Simple Control During Service",
-    body: "See all detected verses in one place. Reorder, skip, or show any verse with a click. Stay in control without stress or switching between apps.",
+    title: "Broadcast control",
+    body: "Designed for real production environments with HDMI projector flows and upcoming NDI support.",
   },
 ];
 
@@ -62,7 +62,7 @@ export function FeaturesSection() {
       <Container className="flex flex-col gap-10 md:gap-14">
         <Reveal>
           <SectionHeading id="features-heading">
-            Everything your media team needs
+            Built for live ministry
           </SectionHeading>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 md:[&>*]:-ml-px md:[&>*]:-mt-px lg:grid-cols-3">

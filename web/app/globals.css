@@ -37,17 +37,19 @@
 }
 
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
-  --muted-foreground: rgba(255, 255, 255, 0.6);
-  --subtle-foreground: rgba(255, 255, 255, 0.4);
+  --background: #07111F;
+  --foreground: #F7FAFF;
+  --muted-foreground: rgba(247, 250, 255, 0.6);
+  --subtle-foreground: rgba(247, 250, 255, 0.4);
   --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.15);
   --surface: rgba(255, 255, 255, 0.04);
-  --surface-strong: rgba(255, 255, 255, 0.15);
-  --accent: #0099ff;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
+  --surface-strong: rgba(255, 255, 255, 0.12);
+  --accent: #1677FF;
+  --accent-cyan: #19D7FF;
+  --accent-gold: #F4C95D;
+  --primary: #F7FAFF;
+  --primary-foreground: #07111F;
 }
 
 @theme inline {
@@ -141,22 +143,22 @@ html.lenis body {
  * (#0099ff) and the same near-black surface as the marketing site.
  */
 .dark {
-  --color-fd-background: 0 0% 0%;
-  --color-fd-foreground: 0 0% 100%;
-  --color-fd-muted: 0 0% 6%;
-  --color-fd-muted-foreground: 0 0% 60%;
-  --color-fd-popover: 0 0% 4%;
-  --color-fd-popover-foreground: 0 0% 96%;
-  --color-fd-card: 0 0% 4%;
-  --color-fd-card-foreground: 0 0% 96%;
-  --color-fd-border: 0 0% 12%;
-  --color-fd-primary: 204 100% 50%;
-  --color-fd-primary-foreground: 0 0% 0%;
-  --color-fd-secondary: 0 0% 6%;
-  --color-fd-secondary-foreground: 0 0% 96%;
-  --color-fd-accent: 0 0% 8%;
-  --color-fd-accent-foreground: 0 0% 96%;
-  --color-fd-ring: 204 100% 50%;
+  --color-fd-background: 215 63% 8%;
+  --color-fd-foreground: 216 100% 98%;
+  --color-fd-muted: 215 63% 14%;
+  --color-fd-muted-foreground: 216 100% 60%;
+  --color-fd-popover: 215 63% 10%;
+  --color-fd-popover-foreground: 216 100% 98%;
+  --color-fd-card: 215 63% 10%;
+  --color-fd-card-foreground: 216 100% 98%;
+  --color-fd-border: 215 63% 18%;
+  --color-fd-primary: 215 100% 54%;
+  --color-fd-primary-foreground: 216 100% 98%;
+  --color-fd-secondary: 215 63% 14%;
+  --color-fd-secondary-foreground: 216 100% 98%;
+  --color-fd-accent: 215 63% 16%;
+  --color-fd-accent-foreground: 216 100% 98%;
+  --color-fd-ring: 215 100% 54%;
 }
 
 /* Slightly soften the docs surface against the pure-black marketing site */
