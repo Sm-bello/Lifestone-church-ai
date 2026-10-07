@@ -60,6 +60,7 @@ pub async fn start_transcription(
         (app_state.stt_active.clone(), app_state.audio_active.clone())
     };
 
+    let _ = model; // Offline speech detection exclusively uses the bundled Nigerian model
     let provider_name = provider.as_deref().unwrap_or("deepgram");
 
     // ── 2. Build the STT provider ───────────────────────────────────────
@@ -70,14 +71,9 @@ pub async fn start_transcription(
             // Dev: {CARGO_MANIFEST_DIR}/../models/whisper/ggml-large-v3-turbo-q8_0.bin
             // Prod: resource_dir()/models/whisper/ggml-large-v3-turbo-q8_0.bin
             
-            // FIX: Map shorthand names to full filenames
-            let model_filename = match model.as_deref() {
-                Some("nigerian") | Some("ncair") | Some("ncair1") => "ggml-nigerian.bin",
-                Some(name) if name.ends_with(".bin") => name,
-                Some(name) => &format!("ggml-{}.bin", name),
-                None => "ggml-large-v3-turbo-q8_0.bin",
-            };
-            log::info!("[STT] Resolved model filename: {model_filename}");
+            // Single offline speech model: Nigerian-accented NCAIR1 model
+            let model_filename = "ggml-nigerian.bin";
+            log::info!("[STT] Using offline Nigerian speech model: {model_filename}");
 
             let model_path = {
                 let base_dir =
@@ -90,60 +86,22 @@ pub async fn start_transcription(
                     log::info!("[STT] Found model in dev path: {}", dev_path.display());
                     dev_path
                 } else {
-                    // Try resource_dir first (production bundle)
-                    let resource_path = app.path()
-                        .resource_dir()
-                        .map(|p| {
-                            p.join("models")
-                                .join("whisper")
-                                .join(model_filename)
-                        });
-                    
-                    if let Ok(ref p) = resource_path {
-                        if p.exists() {
-                            log::info!("[STT] Found model in resource path: {}", p.display());
-                            p.clone()
-                        } else {
-                            // Fallback: same directory as the executable
-                            if let Ok(exe_path) = std::env::current_exe() {
-                                if let Some(exe_dir) = exe_path.parent() {
-                                    let exe_model = exe_dir.join("models").join("whisper").join(model_filename);
-                                    if exe_model.exists() {
-                                        log::info!("[STT] Found model in exe path: {}", exe_model.display());
-                                        exe_model
-                                    } else {
-                                        log::warn!("[STT] Model not found in any path, falling back to: {}", dev_path.display());
-                                        resource_path.unwrap_or_else(|_| {
-                                            std::path::PathBuf::from("models/whisper").join(model_filename)
-                                        })
-                                    }
-                                } else {
-                                    resource_path.unwrap_or_else(|_| {
-                                        std::path::PathBuf::from("models/whisper").join(model_filename)
-                                    })
-                                }
-                            } else {
-                                resource_path.unwrap_or_else(|_| {
-                                    std::path::PathBuf::from("models/whisper").join(model_filename)
-                                })
-                            }
-                        }
+                    let candidates = [
+                        app.path().resource_dir().ok().map(|p| p.join("models").join("whisper").join(model_filename)),
+                        app.path().resource_dir().ok().map(|p| p.join(model_filename)),
+                        app.path().resource_dir().ok().map(|p| p.join("_up_").join("models").join("whisper").join(model_filename)),
+                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("models").join("whisper").join(model_filename))),
+                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join(model_filename))),
+                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join("models").join("whisper").join(model_filename))),
+                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join(model_filename))),
+                    ];
+
+                    if let Some(found) = candidates.into_iter().flatten().find(|p| p.exists()) {
+                        log::info!("[STT] Found model in production bundle: {}", found.display());
+                        found
                     } else {
-                        // resource_dir not available
-                        if let Ok(exe_path) = std::env::current_exe() {
-                            if let Some(exe_dir) = exe_path.parent() {
-                                let exe_model = exe_dir.join("models").join("whisper").join(model_filename);
-                                if exe_model.exists() {
-                                    exe_model
-                                } else {
-                                    std::path::PathBuf::from("models/whisper").join(model_filename)
-                                }
-                            } else {
-                                std::path::PathBuf::from("models/whisper").join(model_filename)
-                            }
-                        } else {
-                            std::path::PathBuf::from("models/whisper").join(model_filename)
-                        }
+                        log::warn!("[STT] Model not found in bundled candidates, falling back to dev path: {}", dev_path.display());
+                        dev_path
                     }
                 }
             };

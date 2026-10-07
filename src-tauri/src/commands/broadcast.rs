@@ -16,9 +16,9 @@ fn window_label(output_id: &str) -> &'static str {
     }
 }
 
-/// Map `output_id` to broadcast-output.html URL with query param.
-fn window_url(output_id: &str) -> String {
-    format!("broadcast-output.html?output={output_id}")
+/// Broadcast output HTML page path.
+fn window_url() -> &'static str {
+    "broadcast-output.html"
 }
 
 #[derive(Serialize)]
@@ -63,7 +63,7 @@ pub fn ensure_broadcast_window(app: tauri::AppHandle, output_id: String) -> Resu
     WebviewWindowBuilder::new(
         &app,
         label,
-        WebviewUrl::App(window_url(&output_id).into()),
+        WebviewUrl::App(window_url().into()),
     )
     .title(if output_id == "alt" { "Lifestone NDI Alt" } else { "Lifestone NDI" })
     .inner_size(1920.0, 1080.0)
@@ -104,7 +104,11 @@ pub fn open_broadcast_window(
                 height: size.height,
             }))
             .map_err(|e| e.to_string())?;
+        let _ = window.set_decorations(true);
+        let _ = window.set_resizable(true);
+        let _ = window.set_always_on_top(false);
         window.show().map_err(|e| e.to_string())?;
+        let _ = window.set_focus();
         return Ok(());
     }
 
@@ -117,12 +121,14 @@ pub fn open_broadcast_window(
     WebviewWindowBuilder::new(
         &app,
         label,
-        WebviewUrl::App(window_url(&output_id).into()),
+        WebviewUrl::App(window_url().into()),
     )
     .title(title)
     .position(f64::from(pos.x), f64::from(pos.y))
     .inner_size(f64::from(size.width), f64::from(size.height))
     .decorations(true)
+    .resizable(true)
+    .fullscreen(false)
     .always_on_top(false)
     .skip_taskbar(false)
     .focused(true)
@@ -136,19 +142,11 @@ pub fn open_broadcast_window(
 pub fn close_broadcast_window(
     app: tauri::AppHandle,
     output_id: String,
-    runtime: State<'_, Mutex<NdiRuntime>>,
+    _runtime: State<'_, Mutex<NdiRuntime>>,
 ) -> Result<(), String> {
     let label = window_label(&output_id);
     if let Some(window) = app.get_webview_window(label) {
-        let ndi_active = runtime
-            .lock()
-            .map_err(|e| e.to_string())?
-            .is_active(&output_id);
-        if ndi_active {
-            window.hide().map_err(|e| e.to_string())?;
-        } else {
-            window.close().map_err(|e| e.to_string())?;
-        }
+        window.hide().map_err(|e| e.to_string())?;
     }
     Ok(())
 }

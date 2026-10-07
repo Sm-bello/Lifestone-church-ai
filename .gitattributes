@@ -1,3 +1,6 @@
 data/verse_embeddings.npy filter=lfs diff=lfs merge=lfs -text
 data/sources.zip filter=lfs diff=lfs merge=lfs -text
 src-tauri/binaries/*.exe filter=lfs diff=lfs merge=lfs -text
+models/whisper/ggml-nigerian.bin filter=lfs diff=lfs merge=lfs -text
+models/minilm-onnx/onnx/model.onnx filter=lfs diff=lfs merge=lfs -text
+data/lifestone.db filter=lfs diff=lfs merge=lfs -text

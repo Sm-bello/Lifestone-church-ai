@@ -182,6 +182,18 @@ export function SearchPanel() {
   const handleVerseClick = useCallback((verse: Verse) => {
     setSelectedVerseId(verse.id)
     bibleActions.selectVerse(verse)
+    if (useBroadcastStore.getState().currentMedia) {
+      useBroadcastStore.getState().setCurrentMedia(null)
+    }
+  }, [])
+
+  const handleVerseDoubleClick = useCallback((verse: Verse) => {
+    setSelectedVerseId(verse.id)
+    bibleActions.selectVerse(verse)
+    useBroadcastStore.getState().setLive(true)
+    if (useBroadcastStore.getState().currentMedia) {
+      useBroadcastStore.getState().setCurrentMedia(null)
+    }
   }, [])
 
   const handleKeyDown = useCallback(
@@ -571,6 +583,7 @@ export function SearchPanel() {
                     key={verse.id}
                     id={`verse-${verse.id}`}
                     onClick={() => handleVerseClick(verse)}
+                    onDoubleClick={() => handleVerseDoubleClick(verse)}
                     className={cn(
                       "group flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors",
                       verse.id === effectiveSelectedVerseId
@@ -693,6 +706,25 @@ export function SearchPanel() {
                       verse: result.verse,
                       text: result.verse_text,
                     })
+                    if (useBroadcastStore.getState().currentMedia) {
+                      useBroadcastStore.getState().setCurrentMedia(null)
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    bibleActions.selectVerse({
+                      id: 0,
+                      translation_id: activeTranslationId,
+                      book_number: result.book_number,
+                      book_name: result.book_name,
+                      book_abbreviation: "",
+                      chapter: result.chapter,
+                      verse: result.verse,
+                      text: result.verse_text,
+                    })
+                    useBroadcastStore.getState().setLive(true)
+                    if (useBroadcastStore.getState().currentMedia) {
+                      useBroadcastStore.getState().setCurrentMedia(null)
+                    }
                   }}
                   className="group flex flex-col cursor-pointer gap-1 rounded-lg p-3 transition-colors hover:bg-muted/50 relative"
                 >

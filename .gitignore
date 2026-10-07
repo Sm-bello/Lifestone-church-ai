@@ -23,23 +23,43 @@ dist-ssr
 *.sln
 *.sw?
 
+# Rust target directories (Cargo build cache)
+target/
+src-tauri/target/
+**/target/
+
 # Build artifacts
 build
-data/lifestone.db
+data/lifestone.db-shm
+data/lifestone.db-wal
+data/rhema.db*
 data/sources/*.json
 data/cross-refs/cross_references.txt
 data/cross-refs/cross-references.zip
 data/verses-for-embedding.json
+data/verse_embeddings.npy
+data/sources.zip
 
-# Python virtual environment
+# Python virtual environment & caches
 .venv/
+__pycache__/
+*.pyc
 
-# ML models and embeddings (downloaded, not committed)
+# ML models and embeddings (only keep required production models)
 models/*
+!models/whisper/
+!models/whisper/ggml-nigerian.bin
+!models/minilm-onnx/
+models/minilm-onnx/*
+!models/minilm-onnx/onnx/
+models/minilm-onnx/onnx/*
+!models/minilm-onnx/onnx/model.onnx
+!models/minilm-onnx/tokenizer.json
+!models/minilm-onnx/vocab.txt
+!models/minilm-onnx/config.json
 .env
-.venv/
 .superpowers/
-embeddings/*
+embeddings/
 
 .claude/CLAUDE.md
 
@@ -51,9 +71,13 @@ data/bg_temp
 GHS-1-260.md
 ghs.json
 
-# GSD planning artifacts
-.planning/src-tauri/target
-whisper-convert
-fix-cargo2.js
-data/verse_embeddings.npy
-data/sources.zip
+# Temporary conversion directories & scratch scripts
+whisper-convert/
+ncair1-convert/
+fix-*.js
+patch-*.js
+
+# Ignore heavy models and databases
+data/lifestone.db
+models/minilm-onnx/onnx/model.onnx
+models/whisper/ggml-nigerian.bin

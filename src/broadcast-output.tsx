@@ -1,9 +1,9 @@
 import { createRoot } from "react-dom/client"
 import { useRef, useEffect, useCallback, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
-import { convertFileSrc } from "@tauri-apps/api/core"
+import { invoke, convertFileSrc } from "@tauri-apps/api/core"
 import { readFile } from "@tauri-apps/plugin-fs"
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow"
+import { emit, emitTo, listen } from "@tauri-apps/api/event"
 import { renderVerse } from "@/lib/verse-renderer"
 import type { BroadcastTheme, VerseRenderData, MediaItem } from "@/types/broadcast"
 import type { NdiConfigEventPayload, NdiFrameRequest } from "@/types"
@@ -22,17 +22,27 @@ function uint8ToBase64(bytes: Uint8Array | Uint8ClampedArray): string {
   return btoa(parts.join(""))
 }
 
-const OUTPUT_ID = new URLSearchParams(window.location.search).get("output") ?? "main"
+const OUTPUT_ID = (() => {
+  const param = new URLSearchParams(window.location.search).get("output")
+  if (param) return param
+  try {
+    const label = getCurrentWebviewWindow().label
+    if (label.includes("alt")) return "alt"
+  } catch {}
+  return "main"
+})()
 
 interface BroadcastPayload {
   theme: BroadcastTheme
   verse: VerseRenderData | null
+  outputId?: string
 }
 
 interface MediaUpdatePayload {
   media: MediaItem | null
   isPlaying: boolean
   base64Data?: string
+  outputId?: string
 }
 
 function resolveMediaSrc(media: MediaItem | null): string {
@@ -128,16 +138,59 @@ export function BroadcastCanvas() {
   const ndiCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const lastPushRef = useRef(0)
   const pushingRef = useRef(false)
+  const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
+  const [activeVerse, setActiveVerse] = useState<VerseRenderData | null>(null)
+  const [activeTheme, setActiveTheme] = useState<BroadcastTheme | null>(null)
+  const [showControls, setShowControls] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const mediaSrc = useMediaSrc(currentMedia)
 
-  const logDebug = useCallback((message: string, meta?: unknown) => {
-    console.log(`[broadcast-output] ${message}`, meta ?? "")
+  // Wake and auto-hide floating control bar on mouse movement
+  const handleMouseMove = useCallback(() => {
+    setShowControls(true)
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current)
+    hideControlsTimer.current = setTimeout(() => {
+      setShowControls(false)
+    }, 3200)
   }, [])
 
+  // Window control actions
+  const handleMinimize = useCallback(async () => {
+    try {
+      const win = getCurrentWebviewWindow()
+      await win.minimize()
+    } catch (e) {
+      console.warn("Minimize error:", e)
+    }
+  }, [])
+
+  const handleToggleFullscreen = useCallback(async () => {
+    try {
+      const win = getCurrentWebviewWindow()
+      const current = await win.isFullscreen().catch(() => false)
+      await win.setFullscreen(!current)
+      setIsFullscreen(!current)
+    } catch (e) {
+      console.warn("Fullscreen toggle error:", e)
+    }
+  }, [])
+
+  const handleClose = useCallback(async () => {
+    try {
+      // Hide the window immediately — 0ms lag
+      const win = getCurrentWebviewWindow()
+      await win.hide().catch(() => {})
+      invoke("close_broadcast_window", { outputId: OUTPUT_ID }).catch(() => {})
+    } catch (e) {
+      console.warn("Close window error:", e)
+    }
+  }, [])
+
+  // Draw scripture verse or theme background to canvas
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     const container = mediaContainerRef.current
@@ -154,37 +207,23 @@ export function BroadcastCanvas() {
     canvas.height = h
     ctx.clearRect(0, 0, w, h)
 
-    if (!latestData.current) {
-      ctx.fillStyle = "#000"
-      ctx.fillRect(0, 0, w, h)
+    const payload = latestData.current
+    if (!payload?.theme) {
       return
     }
 
-    const { theme, verse } = latestData.current
-    const shouldDrawText = !!verse && (!currentMedia || !mediaReady)
-    if (!shouldDrawText) return
+    const { theme, verse } = payload
+    // When media is active (image/video), display the media clean without scripture text overlay
+    const shouldDrawText = !!verse && !currentMedia
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.45)"
-    ctx.fillRect(0, 0, w, h)
-
-    const effectiveTheme = {
-      ...theme,
-      background: {
-        ...theme.background,
-        type: "transparent" as const,
-        color: "transparent",
-        gradient: null,
-        image: null,
-        video: null,
-      },
+    if (shouldDrawText) {
+      const scale = w / theme.resolution.width
+      renderVerse(ctx, theme, verse, {
+        scale,
+        imageCache: imageCacheRef.current,
+      })
     }
-
-    const scale = w / theme.resolution.width
-    renderVerse(ctx, effectiveTheme, verse, {
-      scale,
-      imageCache: imageCacheRef.current,
-    })
-  }, [currentMedia, mediaReady])
+  }, [currentMedia])
 
   const preloadBackgroundImage = useCallback(
     (theme: BroadcastTheme) => {
@@ -254,9 +293,9 @@ export function BroadcastCanvas() {
     setTimeout(() => void pushNdiFrame(), 300)
   }, [pushNdiFrame])
 
+  // Video render tick
   useEffect(() => {
-    const shouldDrawText = !!latestData.current?.verse && (!currentMedia || !mediaReady)
-    if (!shouldDrawText) return
+    if (!latestData.current?.verse) return
     if (currentMedia?.type !== "video" || !mediaReady) return
 
     let rafId: number
@@ -268,18 +307,31 @@ export function BroadcastCanvas() {
     return () => cancelAnimationFrame(rafId)
   }, [currentMedia, mediaReady, draw])
 
+  // Setup listeners and bidirectional sync
   useEffect(() => {
     const currentWindow = getCurrentWebviewWindow()
-    logDebug("Mounting", { label: currentWindow.label, outputId: OUTPUT_ID })
+    currentWindow.isFullscreen().then(setIsFullscreen).catch(() => {})
 
-    const unlisten = currentWindow.listen<BroadcastPayload>(
+    const handleVerseUpdate = (payload: BroadcastPayload) => {
+      if (payload.outputId && payload.outputId !== OUTPUT_ID) return
+      latestData.current = payload
+      setActiveVerse(payload.verse)
+      setActiveTheme(payload.theme)
+      preloadBackgroundImage(payload.theme)
+      draw()
+      pushNdiBurst()
+    }
+
+    // Listen locally to window events
+    const unlistenWindowVerse = currentWindow.listen<BroadcastPayload>(
       "broadcast:verse-update",
-      (event) => {
-        latestData.current = event.payload
-        preloadBackgroundImage(event.payload.theme)
-        draw()
-        pushNdiBurst()
-      }
+      (event) => handleVerseUpdate(event.payload)
+    )
+
+    // Also listen to global broadcast events
+    const unlistenGlobalVerse = listen<BroadcastPayload>(
+      "broadcast:verse-update",
+      (event) => handleVerseUpdate(event.payload)
     )
 
     const unlistenNdiConfig = currentWindow.listen<NdiConfigEventPayload>(
@@ -290,20 +342,46 @@ export function BroadcastCanvas() {
       }
     )
 
-    const unlistenMedia = currentWindow.listen<MediaUpdatePayload>(
-      "broadcast:media-update",
-      (event) => {
-        const payload = event.payload
-        logDebug("media-update", {
-          type: payload.media?.type,
-          src: resolveMediaSrc(payload.media).slice(0, 60),
-        })
+    const handleMediaUpdate = (payload: MediaUpdatePayload) => {
+      if (payload.outputId && payload.outputId !== OUTPUT_ID) return
+      setCurrentMedia(payload.media)
+      setMediaReady(false)
+    }
 
-        setCurrentMedia(payload.media)
-        setMediaReady(false)
-      }
+    const unlistenWindowMedia = currentWindow.listen<MediaUpdatePayload>(
+      "broadcast:media-update",
+      (event) => handleMediaUpdate(event.payload)
     )
 
+    const unlistenGlobalMedia = listen<MediaUpdatePayload>(
+      "broadcast:media-update",
+      (event) => handleMediaUpdate(event.payload)
+    )
+
+    // Handshake burst: Announce ready to main window repeatedly until initial theme/verse arrives
+    const announceReady = () => {
+      console.log("[broadcast-output] Announcing ready for output:", OUTPUT_ID)
+      void currentWindow.emitTo("main", "broadcast:output-ready", { output: OUTPUT_ID }).catch((e) => {
+        console.warn("[broadcast-output] emitTo main failed:", e)
+      })
+      void emit("broadcast:output-ready", { output: OUTPUT_ID }).catch((e) => {
+        console.warn("[broadcast-output] global emit failed:", e)
+      })
+    }
+
+    // Announce immediately, then retry every 300ms for up to 10 seconds
+    announceReady()
+    let retryCount = 0
+    const syncInterval = setInterval(() => {
+      if (!latestData.current && retryCount < 33) {
+        retryCount++
+        announceReady()
+      } else {
+        clearInterval(syncInterval)
+      }
+    }, 300)
+
+    // Check NDI status
     void invoke<{ active: boolean; width: number; height: number; fps: number } | null>(
       "get_ndi_status",
       { outputId: OUTPUT_ID }
@@ -320,15 +398,37 @@ export function BroadcastCanvas() {
       })
       .catch(() => {})
 
-    void currentWindow.emitTo("main", "broadcast:output-ready").catch(() => {})
+    // Keyboard shortcuts: Escape to exit fullscreen, F11 to toggle
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        currentWindow.isFullscreen().then((fs) => {
+          if (fs) {
+            void currentWindow.setFullscreen(false)
+            setIsFullscreen(false)
+          } else {
+            void handleMinimize()
+          }
+        }).catch(() => {})
+      } else if (e.key === "F11") {
+        e.preventDefault()
+        void handleToggleFullscreen()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
 
     return () => {
-      unlisten.then((fn) => fn())
+      clearInterval(syncInterval)
+      window.removeEventListener("keydown", handleKeyDown)
+      unlistenWindowVerse.then((fn) => fn())
+      unlistenGlobalVerse.then((fn) => fn())
       unlistenNdiConfig.then((fn) => fn())
-      unlistenMedia.then((fn) => fn())
+      unlistenWindowMedia.then((fn) => fn())
+      unlistenGlobalMedia.then((fn) => fn())
     }
-  }, [draw, logDebug, preloadBackgroundImage, pushNdiFrame, pushNdiBurst])
+  }, [draw, preloadBackgroundImage, pushNdiBurst, handleMinimize, handleToggleFullscreen])
 
+  // Periodic NDI frame push
   useEffect(() => {
     const timer = setInterval(() => {
       if (!ndiConfigRef.current.active) return
@@ -337,22 +437,41 @@ export function BroadcastCanvas() {
     return () => clearInterval(timer)
   }, [pushNdiFrame])
 
+  // Resize listener to re-draw canvas
+  useEffect(() => {
+    const handleResize = () => draw()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [draw])
+
   return (
     <div
       ref={mediaContainerRef}
+      onMouseMove={handleMouseMove}
+      onDoubleClick={handleToggleFullscreen}
       style={{
         width: "100vw",
         height: "100vh",
         position: "relative",
-        background: "#000",
+        background: activeTheme?.background?.color || "radial-gradient(ellipse at center, #0d121f 0%, #05070b 70%, #000000 100%)",
         overflow: "hidden",
+        cursor: showControls ? "default" : "none",
       }}
     >
+      {/* Media Layer (Image Background) */}
       {currentMedia?.type === "image" && (
         <img
           src={mediaSrc}
           alt="broadcast"
-          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
           crossOrigin="anonymous"
           onLoad={() => {
             setMediaReady(true)
@@ -366,59 +485,167 @@ export function BroadcastCanvas() {
         />
       )}
 
+      {/* Media Layer (Video Background) */}
       {currentMedia?.type === "video" && mediaSrc && (
-        <>
-          <video
-            src={mediaSrc}
-            className="absolute inset-0 h-full w-full object-cover"
-            muted
-            playsInline
-            loop
-            preload="auto"
-            autoPlay
-            onLoadedData={(e) => {
-              const el = e.currentTarget
-              console.log("[broadcast-output] Video loaded:", currentMedia?.name, "duration:", el.duration)
-              setMediaReady(true)
-              el.play().catch((err) => {
-                console.warn("[broadcast-output] Autoplay blocked:", err)
-              })
-              draw()
-              pushNdiBurst()
-            }}
-            onCanPlay={() => console.log("[broadcast-output] Can play:", currentMedia?.name)}
-            onError={() => {
-              console.error("[broadcast-output] Video error:", currentMedia?.name, "src:", mediaSrc.slice(0, 80))
-              setMediaReady(false)
-            }}
-          />
+        <video
+          key={mediaSrc}
+          src={mediaSrc}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+          muted
+          playsInline
+          loop
+          preload="auto"
+          autoPlay
+          onCanPlay={(e) => {
+            setMediaReady(true)
+            e.currentTarget.play().catch(() => {})
+          }}
+          onLoadedData={(e) => {
+            setMediaReady(true)
+            e.currentTarget.play().catch(() => {})
+            draw()
+            pushNdiBurst()
+          }}
+          onError={() => {
+            setMediaReady(false)
+          }}
+        />
+      )}
+
+      {/* Standby Church Live Display (EasyWorship Style) when no verse is active */}
+      {!activeVerse && !currentMedia && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            background: "radial-gradient(circle at 50% 45%, rgba(30, 41, 59, 0.45) 0%, rgba(5, 7, 12, 0.95) 75%)",
+          }}
+        >
+          {/* Subtle Church Cross & Radiance Emblem */}
           <div
-            className="absolute inset-0 flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(0,0,0,0.3)", zIndex: 10 }}
-            onClick={(e) => {
-              const video = e.currentTarget.previousElementSibling as HTMLVideoElement
-              if (video) {
-                video.play().catch((err) => console.error("Play failed:", err))
-                e.currentTarget.style.display = "none"
-              }
+            style={{
+              position: "relative",
+              width: 120,
+              height: 120,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 24,
             }}
           >
             <div
-              className="flex items-center justify-center rounded-full"
               style={{
-                width: 80,
-                height: 80,
-                background: "rgba(255,255,255,0.9)",
+                position: "absolute",
+                width: 100,
+                height: 100,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(234, 179, 8, 0.22) 0%, rgba(234, 179, 8, 0.0) 70%)",
+                filter: "blur(8px)",
+              }}
+            />
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              {/* Modern elegant Latin Cross */}
+              <path
+                d="M12 3V21M7 8H17"
+                stroke="#eab308"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="12"
+                cy="8"
+                r="3.5"
+                stroke="#fef08a"
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                opacity="0.6"
+              />
+            </svg>
+          </div>
+
+          {/* Title */}
+          <div
+            style={{
+              fontSize: "2rem",
+              fontWeight: 700,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              color: "#ffffff",
+              textShadow: "0 2px 16px rgba(0,0,0,0.8), 0 0 30px rgba(234, 179, 8, 0.25)",
+              marginBottom: 8,
+              fontFamily: "inherit",
+            }}
+          >
+            LIFESTONE
+          </div>
+
+          {/* Subtitle / Live Output Badge */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 16px",
+              borderRadius: 9999,
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              backgroundColor: "rgba(15, 23, 42, 0.65)",
+              backdropFilter: "blur(12px)",
+              marginBottom: 16,
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "#22c55e",
+                boxShadow: "0 0 10px #22c55e",
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: "#e2e8f0",
               }}
             >
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            </div>
+              LIVE OUTPUT · {OUTPUT_ID === "alt" ? "ALT PROJECTOR" : "PROGRAM"}
+            </span>
           </div>
-        </>
+
+          <div
+            style={{
+              fontSize: "0.875rem",
+              color: "rgba(148, 163, 184, 0.8)",
+              letterSpacing: "0.05em",
+              maxWidth: 420,
+              textAlign: "center",
+              lineHeight: 1.5,
+            }}
+          >
+            Connected & Ready · Detected scriptures and selected verses will project here automatically
+          </div>
+        </div>
       )}
 
+      {/* Canvas Layer (Renders Live Verses) */}
       <canvas
         ref={canvasRef}
         style={{
@@ -430,6 +657,145 @@ export function BroadcastCanvas() {
           pointerEvents: "none",
         }}
       />
+
+      {/* Floating Top-Right Window Controls (Minimize, Maximize, Close) */}
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          borderRadius: 10,
+          backgroundColor: "rgba(15, 23, 42, 0.82)",
+          border: "1px solid rgba(255, 255, 255, 0.12)",
+          backdropFilter: "blur(16px)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.6)",
+          opacity: showControls ? 1 : 0,
+          transform: showControls ? "translateY(0)" : "translateY(-8px)",
+          transition: "opacity 0.25s ease, transform 0.25s ease",
+          zIndex: 50,
+          pointerEvents: showControls ? "auto" : "none",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.6875rem",
+            color: "#94a3b8",
+            fontWeight: 600,
+            paddingRight: 8,
+            borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {OUTPUT_ID === "alt" ? "ALT" : "PROJECTOR"}
+        </span>
+
+        {/* Minimize Button */}
+        <button
+          onClick={handleMinimize}
+          title="Minimize window"
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            borderRadius: 6,
+            color: "#cbd5e1",
+            cursor: "pointer",
+            transition: "background-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.1)"
+            e.currentTarget.style.color = "#ffffff"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.color = "#cbd5e1"
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+        {/* Maximize / Fullscreen Button */}
+        <button
+          onClick={handleToggleFullscreen}
+          title={isFullscreen ? "Restore window (F11)" : "Maximize fullscreen (F11)"}
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            borderRadius: 6,
+            color: "#cbd5e1",
+            cursor: "pointer",
+            transition: "background-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.1)"
+            e.currentTarget.style.color = "#ffffff"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.color = "#cbd5e1"
+          }}
+        >
+          {isFullscreen ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          )}
+        </button>
+
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          title="Close projector window (Esc)"
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            borderRadius: 6,
+            color: "#f87171",
+            cursor: "pointer",
+            transition: "background-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.2)"
+            e.currentTarget.style.color = "#ffffff"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.color = "#f87171"
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

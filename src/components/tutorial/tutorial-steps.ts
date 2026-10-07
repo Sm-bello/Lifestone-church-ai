@@ -59,6 +59,14 @@ export const TUTORIAL_STEPS: Step[] = [
   },
   {
     ...STEP_DEFAULTS,
+    target: '[data-slot="media-bucket"]',
+    title: "Media Bucket",
+    content:
+      "Load church flyer images and announcement videos. Click any media to project it full-screen on your preview and live projector displays.",
+    placement: "right",
+  },
+  {
+    ...STEP_DEFAULTS,
     target: '[data-slot="preview-panel"]',
     title: "Programme Preview",
     content:

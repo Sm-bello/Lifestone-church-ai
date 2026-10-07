@@ -18,8 +18,19 @@ export function deriveLiveVerse({
   selectedVerse: Verse | null
   translation: string
 }): VerseRenderData | null {
-  if (!isLive || !selectedVerse) return null
-  return toVerseRenderData(selectedVerse, translation)
+  if (!isLive) return null
+  if (selectedVerse) return toVerseRenderData(selectedVerse, translation)
+
+  // Default uplifting scripture when Go Live is turned on before selecting a specific verse
+  return {
+    reference: `John 3:16 (${translation})`,
+    segments: [
+      {
+        verseNumber: 16,
+        text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
+      },
+    ],
+  }
 }
 
 export const broadcastActions = {

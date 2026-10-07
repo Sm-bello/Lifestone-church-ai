@@ -40,7 +40,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   cooldownMs: 2500,
   onboardingComplete: false,
   sttProvider: "whisper",
-  whisperModel: "ggml-large-v3-turbo-q8_0.bin",
+  whisperModel: "ggml-nigerian.bin",
 
   setDeepgramApiKey: (deepgramApiKey) => set({ deepgramApiKey }),
   setOpenaiApiKey: (openaiApiKey) => set({ openaiApiKey }),

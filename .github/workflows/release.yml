@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   publish-tauri:
@@ -20,7 +21,7 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: ''
           - platform: 'windows-latest'
-            args: ''
+            args: '--config src-tauri/tauri.windows.conf.json'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -31,11 +32,13 @@ jobs:
       - name: Pull LFS files
         run: git lfs pull
 
-      - name: Verify LFS files
+      - name: Verify bundled files
         shell: bash
         run: |
-          git lfs ls-files | head -20
-          ls -la models/minilm-onnx/onnx/ 2>/dev/null || echo "Model dir check"
+          echo "=== Verifying bundled offline assets ==="
+          ls -la models/whisper/ 2>/dev/null || echo "models/whisper missing"
+          ls -la data/lifestone.db 2>/dev/null || echo "data/lifestone.db missing"
+          ls -la models/minilm-onnx/onnx/ 2>/dev/null || echo "models/minilm-onnx missing"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -61,7 +64,14 @@ jobs:
             libgtk-3-dev \
             patchelf \
             libasound2-dev \
-            libspeechd-dev
+            libspeechd-dev \
+            libssl-dev \
+            libfuse2 \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev
 
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0

@@ -43,9 +43,10 @@ function DetectionCard({ detection }: { detection: DetectionResult }) {
         detection.verse
       )
     }
-    // Set broadcast live verse
+    // Set broadcast live verse and activate Live mode immediately
     const translation = useBibleStore.getState().translations
       .find(t => t.id === useBibleStore.getState().activeTranslationId)?.abbreviation ?? "KJV"
+    useBroadcastStore.getState().setLive(true)
     useBroadcastStore.getState().setLiveVerse(
       toVerseRenderData({
         id: 0, translation_id: useBibleStore.getState().activeTranslationId,

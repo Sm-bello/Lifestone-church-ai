@@ -15,7 +15,7 @@ export function Dashboard() {
         inset: "6px",
         display: "grid",
         gridTemplateColumns: "320px 1fr 1fr 320px",
-        gridTemplateRows: "56px minmax(0, 2fr) minmax(0, 3fr)",
+        gridTemplateRows: "auto minmax(0, 2fr) minmax(0, 3fr)",
         gap: "12px",
         overflow: "hidden",
       }}

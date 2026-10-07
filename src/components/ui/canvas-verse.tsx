@@ -138,29 +138,26 @@ export const CanvasVerse = memo(function CanvasVerse({
     const displayH = cssW / aspectRatio
     ctx.clearRect(0, 0, displayW, displayH)
 
-    const shouldDrawText = !!verse && (!media || !mediaReady)
-    if (!shouldDrawText) return
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.45)"
-    ctx.fillRect(0, 0, displayW, displayH)
-
-    const effectiveTheme = {
-      ...theme,
-      background: {
-        ...theme.background,
-        type: "transparent" as const,
-        color: "transparent",
-        gradient: null,
-        image: null,
-        video: null,
-      },
+    // When media is active (image/video), display the media clean without scripture text
+    if (media) {
+      return
     }
 
     const scale = displayW / theme.resolution.width
-    renderVerse(ctx, effectiveTheme, verse, {
+    renderVerse(ctx, theme, verse, {
       scale,
       imageCache: imageCacheRef.current,
     })
+
+    if (!verse && !media) {
+      ctx.save()
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)"
+      ctx.font = `500 ${Math.max(12, Math.floor(13 * scale))}px system-ui, sans-serif`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText("Standby · Select a verse or media", displayW / 2, displayH / 2)
+      ctx.restore()
+    }
   }, [theme, verse, media, mediaReady])
 
   useEffect(() => {
@@ -191,8 +188,7 @@ export const CanvasVerse = memo(function CanvasVerse({
   }, [theme.background, drawText])
 
   useEffect(() => {
-    const shouldDrawText = !!verse && (!media || !mediaReady)
-    if (!shouldDrawText) return
+    if (!verse) return
     if (media?.type !== "video" || !mediaReady) return
     let rafId: number
     const tick = () => {
@@ -218,7 +214,16 @@ export const CanvasVerse = memo(function CanvasVerse({
           src={mediaSrc}
           alt={media.name}
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ zIndex: 1 }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 1,
+            display: "block",
+          }}
           crossOrigin="anonymous"
           onLoad={() => {
             console.log("[CanvasVerse] Image ready:", media.name)
@@ -239,11 +244,21 @@ export const CanvasVerse = memo(function CanvasVerse({
             ref={videoRef}
             src={mediaSrc}
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ zIndex: 1 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              zIndex: 1,
+              display: "block",
+            }}
             muted
             playsInline
             loop
             preload="auto"
+            autoPlay
             onLoadedData={(e) => {
               const el = e.currentTarget
               console.log("[CanvasVerse] Video loaded:", media.name, "duration:", el.duration)
@@ -252,7 +267,11 @@ export const CanvasVerse = memo(function CanvasVerse({
                 console.warn("[CanvasVerse] Autoplay blocked:", err)
               })
             }}
-            onCanPlay={() => console.log("[CanvasVerse] Can play:", media.name)}
+            onCanPlay={(e) => {
+              console.log("[CanvasVerse] Can play:", media.name)
+              setMediaReady(true)
+              e.currentTarget.play().catch(() => {})
+            }}
             onError={() => {
               console.error("[CanvasVerse] Video error:", media.name, "src:", mediaSrc.slice(0, 60))
               setMediaReady(false)

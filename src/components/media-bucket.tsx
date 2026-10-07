@@ -172,7 +172,7 @@ export function MediaBucket() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
+    <div data-slot="media-bucket" className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b shrink-0">
         <h3 className="font-semibold text-sm">Media Bucket</h3>
         <Button size="sm" variant="outline" onClick={handleAdd}>
@@ -212,7 +212,13 @@ export function MediaBucket() {
                   className={`relative aspect-square rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
                     isActive ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"
                   }`}
-                  onClick={() => setCurrentMedia(isActive ? null : item)}
+                  onClick={() => {
+                    const nextItem = isActive ? null : item
+                    setCurrentMedia(nextItem)
+                    if (nextItem) {
+                      useBroadcastStore.getState().setLive(true)
+                    }
+                  }}
                   onMouseEnter={() => setHoveredId(item.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >

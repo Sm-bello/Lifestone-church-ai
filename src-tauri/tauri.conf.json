@@ -20,10 +20,21 @@
         "resizable": true,
         "fullscreen": false,
         "center": true
+      },
+      {
+        "label": "broadcast",
+        "title": "Projector - Program",
+        "url": "broadcast-output.html",
+        "width": 1920,
+        "height": 1080,
+        "visible": false,
+        "resizable": true,
+        "decorations": true,
+        "fullscreen": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost data: blob:; media-src 'self' asset: https://asset.localhost blob:; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com; worker-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
+      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:5173 https://localhost; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost tauri: data: blob:; media-src 'self' asset: https://asset.localhost tauri: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost 'self' asset: https://asset.localhost tauri: http://localhost:5173 ws://localhost:5173 https://api.github.com https://github.com; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
     }
   },
   "bundle": {
@@ -32,7 +43,9 @@
       "nsis",
       "msi",
       "dmg",
-      "app"
+      "app",
+      "deb",
+      "appimage"
     ],
     "icon": [
       "icons/32x32.png",
@@ -42,7 +55,6 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../models/whisper/ggml-base.en.bin",
       "../models/whisper/ggml-nigerian.bin",
       "../data/lifestone.db",
       "../models/minilm-onnx/onnx/model.onnx"

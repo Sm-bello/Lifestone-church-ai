@@ -245,7 +245,7 @@ impl SttProvider for WhisperProvider {
                 let mut pending_short: Option<SpeechAccumulator> = None;
                 let mut frames_seen: u64 = 0;
 
-                let send_buffer = |buf: Vec<i16>, tx: &mpsc::Sender<Vec<i16>>| {
+                let _send_buffer = |buf: Vec<i16>, tx: &mpsc::Sender<Vec<i16>>| {
                     if buf.len() >= MIN_BUFFER_SAMPLES {
                         let dur = buf.len() as f64 / SAMPLE_RATE as f64;
                         log::info!(
@@ -382,7 +382,7 @@ impl SttProvider for WhisperProvider {
                             // flush it if it meets minimum, otherwise discard.
                             if let Some(ref acc) = pending_short {
                                 if acc.is_stale() {
-                                    let mut buf = pending_short.take().unwrap().take();
+                                    let buf = pending_short.take().unwrap().take();
                                     if buf.len() >= MIN_BUFFER_SAMPLES {
                                         let dur = buf.len() as f64 / SAMPLE_RATE as f64;
                                         log::info!(

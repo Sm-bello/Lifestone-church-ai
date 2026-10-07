@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { emitTo } from "@tauri-apps/api/event"
+import { emit, emitTo, listen } from "@tauri-apps/api/event"
 import { load, type Store } from "@tauri-apps/plugin-store"
 import type { BroadcastTheme, VerseRenderData } from "@/types"
 import type { MediaItem } from "@/types/broadcast"
@@ -204,15 +204,23 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     void emitTo(label, "broadcast:verse-update", {
       theme,
       verse: s.liveVerse,
+      outputId,
+    }).catch(() => {})
+
+    void emit("broadcast:verse-update", {
+      theme,
+      verse: s.liveVerse,
+      outputId,
     }).catch(() => {})
 
     // Also sync media to broadcast window
-    if (s.currentMedia) {
-      void emitTo(label, "broadcast:media-update", {
-        media: s.currentMedia,
-        isPlaying: s.isMediaPlaying,
-      }).catch(() => {})
+    const mediaPayload = {
+      media: s.currentMedia,
+      isPlaying: s.isMediaPlaying,
+      outputId,
     }
+    void emitTo(label, "broadcast:media-update", mediaPayload).catch(() => {})
+    void emit("broadcast:media-update", mediaPayload).catch(() => {})
   },
   syncBroadcastOutput: () => {
     get().syncBroadcastOutputFor("main")
@@ -226,7 +234,10 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     set({ altActiveThemeId })
     get().syncBroadcastOutputFor("alt")
   },
-  setLive: (isLive) => set({ isLive }),
+  setLive: (isLive) => {
+    set({ isLive })
+    get().syncBroadcastOutput()
+  },
   setLiveVerse: (liveVerse) => {
     set({ liveVerse })
     get().syncBroadcastOutput()
@@ -384,6 +395,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     const payload = { media: s.currentMedia, isPlaying: s.isMediaPlaying }
     void emitTo("broadcast", "broadcast:media-update", payload).catch(() => {})
     void emitTo("broadcast-alt", "broadcast:media-update", payload).catch(() => {})
+    void emit("broadcast:media-update", payload).catch(() => {})
   },
 }))
 
@@ -455,4 +467,11 @@ async function persistBroadcastThemes(state: BroadcastState): Promise<void> {
   } catch {
     console.warn("[broadcast] Failed to persist themes")
   }
+}
+// Listen for broadcast windows reporting ready and sync them immediately
+if (typeof window !== "undefined") {
+  listen<{ output?: string }>("broadcast:output-ready", (event) => {
+    const outputId = event.payload?.output ?? "main"
+    useBroadcastStore.getState().syncBroadcastOutputFor(outputId)
+  }).catch(() => {})
 }

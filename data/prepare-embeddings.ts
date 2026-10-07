@@ -41,7 +41,7 @@ const DB_PATH = join(DATA_DIR, "lifestone.db")
 const VERSES_JSON = join(DATA_DIR, "verses-for-embedding.json")
 const EMB_BIN = join(PROJECT_ROOT, "embeddings", "kjv-qwen3-0.6b.bin")
 const IDS_BIN = join(PROJECT_ROOT, "embeddings", "kjv-qwen3-0.6b-ids.bin")
-const WHISPER_MODEL = join(PROJECT_ROOT, "models", "whisper", "ggml-large-v3-turbo-q8_0.bin")
+const WHISPER_MODEL = join(PROJECT_ROOT, "models", "whisper", "ggml-nigerian.bin")
 const MODEL_ONNX = join(MODELS_DIR, "model.onnx")
 const MODEL_INT8 = join(MODELS_DIR_INT8, "model_quantized.onnx")
 

@@ -249,11 +249,12 @@ function SpeechSection() {
             <RadioGroupItem value="whisper" className="mt-0.5" />
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-foreground">
-                Local (Whisper)
+                Local · Offline (NCAIR1)
               </span>
               <p className="text-[0.625rem] leading-relaxed text-muted-foreground">
-                Runs Whisper large-v3-turbo locally on your device. Fully
-                offline, no API key needed. Audio never leaves your machine.
+                Runs the NCAIR1 model locally — fine-tuned for Nigerian-accented
+                English. Fully offline, no API key needed. Audio never leaves
+                your device.
               </p>
             </div>
           </label>
@@ -264,31 +265,16 @@ function SpeechSection() {
       {sttProvider === "whisper" && (
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Whisper Model
+            Speech Model
           </label>
-          <Select
-            value={whisperModel}
-            onValueChange={(v) => setWhisperModel(v)}
-          >
-            <SelectTrigger className="text-xs">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ggml-large-v3-turbo-q8_0.bin">
-                Large v3 Turbo (default) — best accuracy
-              </SelectItem>
-              <SelectItem value="ggml-nigerian.bin">
-                NCAIR1 — Nigerian accent optimized
-              </SelectItem>
-              <SelectItem value="ggml-base.en.bin">
-                Base English — fastest, lighter
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 rounded-lg border border-lime-500/30 bg-lime-500/5 px-3 py-2">
+            <span className="text-xs font-medium text-lime-400">NCAIR1</span>
+            <span className="text-xs text-muted-foreground">— Nigerian accent optimized · offline · bundled</span>
+          </div>
           <p className="text-[0.625rem] text-muted-foreground">
-            Select the model that matches your speaker accent. NCAIR1 is
-            fine-tuned for Nigerian English. Base English is fastest but
-            less accurate.
+            NCAIR1 is the only bundled model. It is fine-tuned for Nigerian
+            English and runs fully offline — no internet connection required.
+            Audio never leaves your device.
           </p>
         </div>
       )}

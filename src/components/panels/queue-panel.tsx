@@ -29,6 +29,7 @@ function QueueItemRow({
     bibleActions.selectVerse(item.verse)
     const translation = useBibleStore.getState().translations
       .find(t => t.id === useBibleStore.getState().activeTranslationId)?.abbreviation ?? "KJV"
+    useBroadcastStore.getState().setLive(true)
     useBroadcastStore.getState().setLiveVerse(toVerseRenderData(item.verse, translation))
   }
 
