@@ -1,6 +1,7 @@
 <img width="1024" height="1024" alt="app-icon-square" src="https://github.com/user-attachments/assets/88280d88-f88c-413c-ad23-35b9c195e674" />
 
 
+
 <h1 align="center">Lifestone</h1>
 
 <p align="center">Real-time AI-powered Bible verse detection for live sermons and broadcasts. A Tauri v2 desktop app with a React frontend and Rust backend.</p>
@@ -9,62 +10,67 @@ Lifestone listens to a live sermon audio feed, transcribes speech in real time, 
 
 ## Features
 
-- **Real-time speech-to-text** via local Whisper or cloud Deepgram (WebSocket streaming + REST fallback)
-  - Whisper runs locally with no API costs; Deepgram streams via WebSocket with REST fallback
-- **Voice-controlled translation switching** — say "read in NIV" or "switch to ESV" to change translations instantly during a sermon
-- **Multi-strategy verse detection**
-  - Direct reference parsing (Aho-Corasick automaton + fuzzy matching)
-  - Semantic search — Qwen3-0.6B ONNX embeddings, brute-force cosine similarity over ~31k verse vectors (the `hnsw_index.rs` file is named after a future plan; today it scans linearly)
-  - Quotation matching against known verse text
-  - Reading mode — locks to book/chapter as soon as it's mentioned, with voice navigation ("next chapter", "chapter 5")
-  - Sermon context tracking and sentence buffering
-- **SQLite Bible database** with FTS5 full-text search (BM25 ranking by default)
-- **10 bundled translations** — KJV, NIV, ESV, NASB, NKJV, NLT, AMP, plus SpaRV (Spanish), FreJND (French), and PorBLivre (Portuguese)
-- **Cross-reference lookup** (340k+ refs from openbible.info; the bundled file ships with 344,800 entries)
-- **NDI broadcast output** for live production integration — configurable resolution, 24/30/60 fps, and three alpha modes (none, straight, premultiplied)
-- **Theme designer** — visual canvas editor for verse overlays with backgrounds (solid, gradient, image, transparent), text styling, positioning, shadows, and outlines
-- **Verse queue** with drag-and-drop ordering (`@dnd-kit/react`) and duplicate prevention (flash-highlight on duplicates)
-- **Quick navigation** — keyboard-driven verse entry with autocomplete (e.g., type "J" → Joshua, Tab through book → chapter → verse)
-- **Fuzzy contextual search** (Fuse.js client-side)
-- **Audio level metering** and on-air indicator
-- **Interactive onboarding tutorial** — 11-step guided tour covering all panels, auto-launches on first startup
-- **Light/dark mode** with system theme detection (light, dark, or follow OS)
-- **Settings persistence** — all preferences auto-saved to disk across restarts
-- **Cross-platform** — Windows, macOS, and Linux
-- **Remote control** via OSC and HTTP API for hardware controllers and automation
-  - [Remote control guide](documentation/remote-control.md) — Stream Deck, TouchOSC, REST API integration
+* **Real-time speech-to-text** via local Whisper or cloud Deepgram (WebSocket streaming + REST fallback)
+
+  * Whisper runs locally with no API costs; Deepgram streams via WebSocket with REST fallback
+
+* **Voice-controlled translation switching** — say "read in NIV" or "switch to ESV" to change translations instantly during a sermon
+* **Multi-strategy verse detection**
+
+  * Direct reference parsing (Aho-Corasick automaton + fuzzy matching)
+  * Semantic search — Qwen3-0.6B ONNX embeddings, brute-force cosine similarity over ~31k verse vectors (the `hnsw\_index.rs` file is named after a future plan; today it scans linearly)
+  * Quotation matching against known verse text
+  * Reading mode — locks to book/chapter as soon as it's mentioned, with voice navigation ("next chapter", "chapter 5")
+  * Sermon context tracking and sentence buffering
+
+* **SQLite Bible database** with FTS5 full-text search (BM25 ranking by default)
+* **10 bundled translations** — KJV, NIV, ESV, NASB, NKJV, NLT, AMP, plus SpaRV (Spanish), FreJND (French), and PorBLivre (Portuguese)
+* **Cross-reference lookup** (340k+ refs from openbible.info; the bundled file ships with 344,800 entries)
+* **NDI broadcast output** for live production integration — configurable resolution, 24/30/60 fps, and three alpha modes (none, straight, premultiplied)
+* **Theme designer** — visual canvas editor for verse overlays with backgrounds (solid, gradient, image, transparent), text styling, positioning, shadows, and outlines
+* **Verse queue** with drag-and-drop ordering (`@dnd-kit/react`) and duplicate prevention (flash-highlight on duplicates)
+* **Quick navigation** — keyboard-driven verse entry with autocomplete (e.g., type "J" → Joshua, Tab through book → chapter → verse)
+* **Fuzzy contextual search** (Fuse.js client-side)
+* **Audio level metering** and on-air indicator
+* **Interactive onboarding tutorial** — 11-step guided tour covering all panels, auto-launches on first startup
+* **Light/dark mode** with system theme detection (light, dark, or follow OS)
+* **Settings persistence** — all preferences auto-saved to disk across restarts
+* **Cross-platform** — Windows, macOS, and Linux
+* **Remote control** via OSC and HTTP API for hardware controllers and automation
+
+  * [Remote control guide](documentation/remote-control.md) — Stream Deck, TouchOSC, REST API integration
 
 ## Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Zustand, Vite 7 |
-| **Backend** | Tauri v2, Rust (workspace with 7 crates) |
-| **AI/ML** | ONNX Runtime (Qwen3-0.6B embeddings), Aho-Corasick, Fuse.js |
-| **Database** | SQLite via rusqlite (bundled) with FTS5 |
-| **Broadcast** | NDI 6 SDK via dynamic loading (libloading FFI) |
-| **STT** | Local Whisper via `whisper-rs`; Deepgram WebSocket + REST (`tokio-tungstenite`) |
+|Layer|Technologies|
+|-|-|
+|**Frontend**|React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Zustand, Vite 7|
+|**Backend**|Tauri v2, Rust (workspace with 7 crates)|
+|**AI/ML**|ONNX Runtime (Qwen3-0.6B embeddings), Aho-Corasick, Fuse.js|
+|**Database**|SQLite via rusqlite (bundled) with FTS5|
+|**Broadcast**|NDI 6 SDK via dynamic loading (libloading FFI)|
+|**STT**|Local Whisper via `whisper-rs`; Deepgram WebSocket + REST (`tokio-tungstenite`)|
 
 ### Rust Crates
 
-| Crate | Purpose |
-|---|---|
-| `lifestone-audio` | Audio device enumeration, capture, VAD (cpal) |
-| `lifestone-stt` | Local Whisper (gated behind `whisper` Cargo feature) and Deepgram STT streaming + REST fallback |
-| `lifestone-bible` | SQLite Bible DB, FTS5 search, cross-references |
-| `lifestone-detection` | Verse detection pipeline: direct, semantic, quotation, ensemble merger, sentence buffer, sermon context, reading mode |
-| `lifestone-broadcast` | NDI video frame output via FFI |
-| `lifestone-api` | Tauri command API layer |
-| `lifestone-notes` | (placeholder) |
+|Crate|Purpose|
+|-|-|
+|`lifestone-audio`|Audio device enumeration, capture, VAD (cpal)|
+|`lifestone-stt`|Local Whisper (gated behind `whisper` Cargo feature) and Deepgram STT streaming + REST fallback|
+|`lifestone-bible`|SQLite Bible DB, FTS5 search, cross-references|
+|`lifestone-detection`|Verse detection pipeline: direct, semantic, quotation, ensemble merger, sentence buffer, sermon context, reading mode|
+|`lifestone-broadcast`|NDI video frame output via FFI|
+|`lifestone-api`|Tauri command API layer|
+|`lifestone-notes`|(placeholder)|
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) (runtime for scripts + package manager)
-- [Rust](https://rustup.rs/) toolchain (stable, 1.77.2+)
-- [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (platform-specific system dependencies)
-- [Python 3](https://www.python.org/) (for downloading copyrighted translations and embedding model export)
-- CMake + LLVM/libclang (required for local Whisper STT) — see [Platform-specific setup](#platform-specific-setup) below
-- [Deepgram API key](https://deepgram.com/) (optional, for cloud speech-to-text instead of Whisper)
+* [Bun](https://bun.sh/) (runtime for scripts + package manager)
+* [Rust](https://rustup.rs/) toolchain (stable, 1.77.2+)
+* [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (platform-specific system dependencies)
+* [Python 3](https://www.python.org/) (for downloading copyrighted translations and embedding model export)
+* CMake + LLVM/libclang (required for local Whisper STT) — see [Platform-specific setup](#platform-specific-setup) below
+* [Deepgram API key](https://deepgram.com/) (optional, for cloud speech-to-text instead of Whisper)
 
 ### Platform-specific setup
 
@@ -94,173 +100,180 @@ Windows needs an extra build-tools bootstrap before the shared setup pipeline �
 
 1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/) with the **Desktop development with C++** workload (provides MSVC).
 2. From the repo root:
-   ```powershell
+
+```powershell
    bun install
    bun run setup:windows
    ```
-   This installs LLVM + CMake via `winget` and persists `LIBCLANG_PATH`.
-3. **Close the terminal and open a new one** so `LIBCLANG_PATH` is inherited by subsequent commands.
+
+   This installs LLVM + CMake via `winget` and persists `LIBCLANG\_PATH`.
+
+3. **Close the terminal and open a new one** so `LIBCLANG\_PATH` is inherited by subsequent commands.
 4. Continue with [Quick Setup](#quick-setup-recommended) (`bun run setup:all`) and then `bun run tauri dev`.
 
-## Getting Started
+   ## Getting Started
 
-```bash
-git clone <repo-url>
-cd rhema
-bun install
-```
+   ```bash
+   git clone <repo-url>
+   cd rhema
+   bun install
+   ```
 
-### Quick Setup (recommended)
+   ### Quick Setup (recommended)
 
-One command sets up everything — Python virtual environment, Bible data, database, ONNX model, precomputed embeddings, and the local Whisper model:
+   One command sets up everything — Python virtual environment, Bible data, database, ONNX model, precomputed embeddings, and the local Whisper model:
 
-> **Windows:** run `bun run setup:windows` *before* `setup:all` and restart your terminal. See [Platform-specific setup](#platform-specific-setup) above.
+   > \*\*Windows:\*\* run `bun run setup:windows` \*before\* `setup:all` and restart your terminal. See \[Platform-specific setup](#platform-specific-setup) above.
 
-```bash
-bun run setup:all
-```
+   ```bash
+   bun run setup:all
+   ```
 
-This runs 7 idempotent phases in sequence, skipping any whose output artifacts already exist (pass `--force` to re-run all):
+   This runs 7 idempotent phases in sequence, skipping any whose output artifacts already exist (pass `--force` to re-run all):
 
-1. Python environment (`.venv` + pip deps: `optimum-onnx[onnxruntime]`, `sentence-transformers`, `accelerate`, `tokenizers`, `numpy`, `torch`, `meaningless`)
+1. Python environment (`.venv` + pip deps: `optimum-onnx\[onnxruntime]`, `sentence-transformers`, `accelerate`, `tokenizers`, `numpy`, `torch`, `meaningless`)
 2. Download Bible source data — single bundled archive containing all 10 translations plus the openbible.info cross-references zip
 3. Build SQLite Bible database (`data/lifestone.db` with FTS5 + cross-references)
-4. Download & export ONNX model (`Qwen3-Embedding-0.6B`) + INT8 quantization for ARM64
+4. Download \& export ONNX model (`Qwen3-Embedding-0.6B`) + INT8 quantization for ARM64
 5. Export KJV verses to JSON for embedding precomputation
 6. Precompute verse embeddings (GPU sentence-transformers when available, ONNX CPU fallback otherwise)
-7. Download Whisper model (`ggml-large-v3-turbo-q8_0.bin`) into `models/whisper/`
+7. Download Whisper model (`ggml-large-v3-turbo-q8\_0.bin`) into `models/whisper/`
 
-### Environment
+   ### Environment
 
-#### Speech-to-Text Options
+   #### Speech-to-Text Options
 
-Lifestone supports two speech-to-text engines:
+   Lifestone supports two speech-to-text engines:
 
-**Option 1: Whisper (Local, Free)**
-Whisper runs locally on your machine with no API costs or per-minute billing.
-- Requires CMake + libclang — see [Platform-specific setup](#platform-specific-setup) above
-- The model (`ggml-large-v3-turbo-q8_0.bin`) is fetched as phase 7 of `setup:all`. Run `bun run download:whisper` to grab it on its own.
+   **Option 1: Whisper (Local, Free)**
+   Whisper runs locally on your machine with no API costs or per-minute billing.
 
-**Option 2: Deepgram (Cloud, Paid)**
-Create a `.env` file in the project root:
+* Requires CMake + libclang — see [Platform-specific setup](#platform-specific-setup) above
+* The model (`ggml-large-v3-turbo-q8\_0.bin`) is fetched as phase 7 of `setup:all`. Run `bun run download:whisper` to grab it on its own.
 
-```
-DEEPGRAM_API_KEY=your_key_here
-```
+  **Option 2: Deepgram (Cloud, Paid)**
+  Create a `.env` file in the project root:
 
-Get your API key at [deepgram.com](https://deepgram.com/)
+  ```
+  DEEPGRAM\_API\_KEY=your\_key\_here
+  ```
 
-### NDI SDK (optional)
+  Get your API key at [deepgram.com](https://deepgram.com/)
 
-For broadcast output via NDI:
+  ### NDI SDK (optional)
 
-```bash
-bun run download:ndi-sdk
-```
+  For broadcast output via NDI:
 
-### Running individual setup steps
+  ```bash
+  bun run download:ndi-sdk
+  ```
 
-Each phase can also be run independently:
+  ### Running individual setup steps
 
-```bash
-bun run download:bible-data          # Bundled translations + cross-refs
-bun run build:bible                  # Build SQLite database
-bun run download:model               # Download & export ONNX model
-bun run export:verses                # Export verses to JSON
-bun run precompute:embeddings        # Rust ONNX (recommended); see also -onnx and -py variants
-bun run download:whisper             # Whisper STT model
-```
+  Each phase can also be run independently:
 
-### Run in development
+  ```bash
+  bun run download:bible-data          # Bundled translations + cross-refs
+  bun run build:bible                  # Build SQLite database
+  bun run download:model               # Download \& export ONNX model
+  bun run export:verses                # Export verses to JSON
+  bun run precompute:embeddings        # Rust ONNX (recommended); see also -onnx and -py variants
+  bun run download:whisper             # Whisper STT model
+  ```
 
-```bash
-bun run tauri dev
-```
+  ### Run in development
 
-### Build for production
+  ```bash
+  bun run tauri dev
+  ```
 
-```bash
-bun run tauri build
-```
+  ### Build for production
 
-## Project Structure
+  ```bash
+  bun run tauri build
+  ```
 
-```
-rhema/
-├── src/                          # React frontend
-│   ├── components/
-│   │   ├── broadcast/            # Theme designer, NDI settings
-│   │   ├── controls/             # Transport bar
-│   │   ├── layout/               # Dashboard layout
-│   │   ├── panels/               # Transcript, preview, live output, queue, search, detections
-│   │   └── ui/                   # shadcn/ui + custom components
-│   ├── hooks/                    # useAudio, useTranscription, useDetection, useBible, useBroadcast
-│   ├── stores/                   # Zustand stores (audio, transcript, bible, queue, detection, broadcast, settings)
-│   ├── types/                    # TypeScript type definitions
-│   └── lib/                      # Context search (Fuse.js), verse renderer (Canvas 2D), builtin themes
-├── src-tauri/                    # Rust backend (Tauri v2)
-│   ├── crates/
-│   │   ├── audio/                # Audio capture & metering (cpal)
-│   │   ├── stt/                  # Deepgram STT (WebSocket + REST)
-│   │   ├── bible/                # SQLite Bible DB, search, cross-references
-│   │   ├── detection/            # Verse detection pipeline
-│   │   │   ├── direct/           # Aho-Corasick + fuzzy reference parsing
-│   │   │   └── semantic/         # ONNX embeddings, HNSW index, cloud booster, ensemble
-│   │   ├── broadcast/            # NDI output (FFI)
-│   │   ├── api/                  # Tauri command layer
-│   │   └── notes/                # (placeholder)
-│   └── tauri.conf.json
-├── data/                         # Bible data pipeline
-│   ├── prepare-embeddings.ts     # Unified setup orchestrator (bun run setup:all)
-│   ├── lib/python-env.ts         # Shared Python venv management utilities
-│   ├── download-sources.ts       # Download public domain translations + cross-refs
-│   ├── download-biblegateway.py  # Download copyrighted translations (NIV, ESV, etc.)
-│   ├── build-bible-db.ts         # Build SQLite DB from JSON sources
-│   ├── compute-embeddings.ts     # Export verses to JSON for embedding
-│   ├── precompute-embeddings.py  # Precompute embeddings (GPU auto-detect, ONNX fallback)
-│   ├── download-model.ts         # Export & quantize Qwen3 ONNX model
-│   ├── download-ndi-sdk.ts       # Download NDI SDK libraries
-│   └── schema.sql                # Database schema
-├── models/                       # ML models (gitignored)
-├── embeddings/                   # Precomputed vectors (gitignored)
-├── sdk/ndi/                      # NDI SDK files (downloaded)
-└── build/                        # Vite build output
-```
+  ## Project Structure
 
-## Scripts
+  ```
+  rhema/
+  ├── src/                          # React frontend
+  │   ├── components/
+  │   │   ├── broadcast/            # Theme designer, NDI settings
+  │   │   ├── controls/             # Transport bar
+  │   │   ├── layout/               # Dashboard layout
+  │   │   ├── panels/               # Transcript, preview, live output, queue, search, detections
+  │   │   └── ui/                   # shadcn/ui + custom components
+  │   ├── hooks/                    # useAudio, useTranscription, useDetection, useBible, useBroadcast
+  │   ├── stores/                   # Zustand stores (audio, transcript, bible, queue, detection, broadcast, settings)
+  │   ├── types/                    # TypeScript type definitions
+  │   └── lib/                      # Context search (Fuse.js), verse renderer (Canvas 2D), builtin themes
+  ├── src-tauri/                    # Rust backend (Tauri v2)
+  │   ├── crates/
+  │   │   ├── audio/                # Audio capture \& metering (cpal)
+  │   │   ├── stt/                  # Deepgram STT (WebSocket + REST)
+  │   │   ├── bible/                # SQLite Bible DB, search, cross-references
+  │   │   ├── detection/            # Verse detection pipeline
+  │   │   │   ├── direct/           # Aho-Corasick + fuzzy reference parsing
+  │   │   │   └── semantic/         # ONNX embeddings, HNSW index, cloud booster, ensemble
+  │   │   ├── broadcast/            # NDI output (FFI)
+  │   │   ├── api/                  # Tauri command layer
+  │   │   └── notes/                # (placeholder)
+  │   └── tauri.conf.json
+  ├── data/                         # Bible data pipeline
+  │   ├── prepare-embeddings.ts     # Unified setup orchestrator (bun run setup:all)
+  │   ├── lib/python-env.ts         # Shared Python venv management utilities
+  │   ├── download-sources.ts       # Download public domain translations + cross-refs
+  │   ├── download-biblegateway.py  # Download copyrighted translations (NIV, ESV, etc.)
+  │   ├── build-bible-db.ts         # Build SQLite DB from JSON sources
+  │   ├── compute-embeddings.ts     # Export verses to JSON for embedding
+  │   ├── precompute-embeddings.py  # Precompute embeddings (GPU auto-detect, ONNX fallback)
+  │   ├── download-model.ts         # Export \& quantize Qwen3 ONNX model
+  │   ├── download-ndi-sdk.ts       # Download NDI SDK libraries
+  │   └── schema.sql                # Database schema
+  ├── models/                       # ML models (gitignored)
+  ├── embeddings/                   # Precomputed vectors (gitignored)
+  ├── sdk/ndi/                      # NDI SDK files (downloaded)
+  └── build/                        # Vite build output
+  ```
 
-| Script | Description |
-|---|---|
-| `setup:all` | **Full setup** — runs all 7 data/model/embedding/whisper phases (idempotent; pass `--force` to re-run) |
-| `setup:windows` | Windows bootstrap — installs LLVM + CMake via `winget` and persists `LIBCLANG_PATH` |
-| `dev` | Start Vite dev server |
-| `build` | TypeScript check + Vite production build |
-| `tauri` | Run Tauri CLI commands |
-| `test` | Run Vitest tests |
-| `lint` | ESLint |
-| `format` | Prettier formatting |
-| `typecheck` | TypeScript type checking |
-| `preview` | Preview production build |
-| `download:bible-data` | Download bundled Bible translation archive + cross-references |
-| `build:bible` | Build SQLite Bible database from JSON sources |
-| `download:model` | Export Qwen3-Embedding-0.6B to ONNX + quantize to INT8 |
-| `export:verses` | Export KJV verses to JSON for embedding precomputation |
-| `precompute:embeddings` | Precompute embeddings via Rust ONNX binary (recommended) |
-| `precompute:embeddings-onnx` | Precompute embeddings via Python ONNX Runtime |
-| `precompute:embeddings-py` | Precompute embeddings via Python sentence-transformers (GPU path) |
-| `quantize:model` | Quantize ONNX model to INT8 for ARM64 |
-| `download:whisper` | Download `ggml-large-v3-turbo-q8_0.bin` for local Whisper STT |
-| `download:ndi-sdk` | Download NDI 6 SDK headers and platform libraries |
-| `web:dev`, `web:build`, `web:start`, `web:lint` | Marketing + Fumadocs documentation site under `web/` |
+  ## Scripts
+
+|Script|Description|
+|-|-|
+|`setup:all`|**Full setup** — runs all 7 data/model/embedding/whisper phases (idempotent; pass `--force` to re-run)|
+|`setup:windows`|Windows bootstrap — installs LLVM + CMake via `winget` and persists `LIBCLANG\_PATH`|
+|`dev`|Start Vite dev server|
+|`build`|TypeScript check + Vite production build|
+|`tauri`|Run Tauri CLI commands|
+|`test`|Run Vitest tests|
+|`lint`|ESLint|
+|`format`|Prettier formatting|
+|`typecheck`|TypeScript type checking|
+|`preview`|Preview production build|
+|`download:bible-data`|Download bundled Bible translation archive + cross-references|
+|`build:bible`|Build SQLite Bible database from JSON sources|
+|`download:model`|Export Qwen3-Embedding-0.6B to ONNX + quantize to INT8|
+|`export:verses`|Export KJV verses to JSON for embedding precomputation|
+|`precompute:embeddings`|Precompute embeddings via Rust ONNX binary (recommended)|
+|`precompute:embeddings-onnx`|Precompute embeddings via Python ONNX Runtime|
+|`precompute:embeddings-py`|Precompute embeddings via Python sentence-transformers (GPU path)|
+|`quantize:model`|Quantize ONNX model to INT8 for ARM64|
+|`download:whisper`|Download `ggml-large-v3-turbo-q8\_0.bin` for local Whisper STT|
+|`download:ndi-sdk`|Download NDI 6 SDK headers and platform libraries|
+|`web:dev`, `web:build`, `web:start`, `web:lint`|Marketing + Fumadocs documentation site under `web/`|
 
 ## Security
 
-Lifestone enforces a restrictive Content Security Policy on the Tauri webview to prevent script injection and unauthorized data exfiltration. The policy is defined in `src-tauri/tauri.conf.json`; see **[SECURITY.md](.github/SECURITY.md)** for the directive-by-directive rationale, threat model, and vulnerability reporting process.
+Lifestone enforces a restrictive Content Security Policy on the Tauri webview to prevent script injection and unauthorized data exfiltration. The policy is defined in `src-tauri/tauri.conf.json`; see [**SECURITY.md**](.github/SECURITY.md) for the directive-by-directive rationale, threat model, and vulnerability reporting process.
 
 ## Environment Variables
 
 Create a `.env` file in the project root (optional):
 
-| Variable | Required | Description |
-|---|---|---|
-| `DEEPGRAM_API_KEY` | Optional | API key for Deepgram speech-to-text (not needed if using Whisper) |
+|Variable|Required|Description|
+|-|-|-|
+|`DEEPGRAM\_API\_KEY`|Optional|API key for Deepgram speech-to-text (not needed if using Whisper)|
+
+
+

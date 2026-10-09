@@ -17,8 +17,10 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpIcon,
+  ArrowDownIcon,
   CheckIcon,
   PlusIcon,
+  ChevronRightIcon,
 } from "lucide-react"
 import {
   Tooltip,
@@ -33,6 +35,9 @@ import { Input } from "@/components/ui/input"
 import { searchContextWithFuse } from "@/lib/context-search"
 
 type SearchTab = "book" | "context"
+
+/** Which stable-nav step is active (for the 3-box navigation bar) */
+type NavStep = "book" | "chapter" | "verse"
 
 /** Highlights words from the query that appear in the text. */
 function HighlightedText({ text, query }: { text: string; query: string }) {
@@ -71,6 +76,14 @@ export function SearchPanel() {
   const [quickInput, setQuickInput] = useState("")
   const [showQuickVerses, setShowQuickVerses] = useState(false)
   const [quickVersesList, setQuickVersesList] = useState<Verse[]>([])
+
+  // ── Stable 3-step nav state ───────────────────────────────────────────
+  const [navStep, setNavStep] = useState<NavStep>("book")
+  const [navBookInput, setNavBookInput] = useState("")
+  const [navChapterInput, setNavChapterInput] = useState("")
+  const navBookRef = useRef<HTMLInputElement>(null)
+  const navChapterRef = useRef<HTMLInputElement>(null)
+  const navVerseListRef = useRef<HTMLDivElement>(null)
 
   const quickInputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -137,6 +150,10 @@ export function SearchPanel() {
       setActiveTab("book")
       setSelectedBook(book)
       setChapter(navChapter)
+      // Keep the stable nav bar in sync
+      setNavBookInput(book.name)
+      setNavChapterInput(String(navChapter))
+      setNavStep("verse")
     },
     []
   )
@@ -242,6 +259,74 @@ export function SearchPanel() {
     },
     [chapter, currentChapter, effectiveSelectedVerseId]
   )
+
+  // ── Stable 3-step nav logic ───────────────────────────────────────────
+  /** Books filtered by what the user typed (≥1 char, matches name prefix) */
+  const navBookMatches = useMemo(() => {
+    const q = navBookInput.trim().toLowerCase()
+    if (!q) return books
+    return books.filter(
+      (b) =>
+        b.name.toLowerCase().startsWith(q) ||
+        b.abbreviation.toLowerCase().startsWith(q)
+    )
+  }, [navBookInput, books])
+
+
+  const handleNavGoToChapter = useCallback(() => {
+    const match = navBookMatches[0]
+    if (!match) return
+    setSelectedBook(match)
+    setNavBookInput(match.name)
+    setNavStep("chapter")
+    setNavChapterInput(String(chapter))
+    setTimeout(() => navChapterRef.current?.focus(), 50)
+  }, [navBookMatches, chapter])
+
+  const handleNavGoToVerses = useCallback(() => {
+    const chNum = parseInt(navChapterInput)
+    if (!chNum || chNum < 1) return
+    setChapter(chNum)
+    setSelectedVerseId(null)
+    setNavStep("verse")
+    setTimeout(() => navVerseListRef.current?.focus(), 50)
+  }, [navChapterInput])
+
+  const handleNavVerseUp = useCallback(() => {
+    if (currentChapter.length === 0) return
+    const idx = effectiveSelectedVerseId
+      ? currentChapter.findIndex((v) => v.id === effectiveSelectedVerseId)
+      : currentChapter.length
+    const prevIdx = Math.max(idx - 1, 0)
+    const prev = currentChapter[prevIdx]
+    if (prev) {
+      setSelectedVerseId(prev.id)
+      bibleActions.selectVerse(prev)
+      document.getElementById(`verse-${prev.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [currentChapter, effectiveSelectedVerseId])
+
+  const handleNavVerseDown = useCallback(() => {
+    if (currentChapter.length === 0) return
+    const idx = effectiveSelectedVerseId
+      ? currentChapter.findIndex((v) => v.id === effectiveSelectedVerseId)
+      : -1
+    const nextIdx = Math.min(idx + 1, currentChapter.length - 1)
+    const next = currentChapter[nextIdx]
+    if (next) {
+      setSelectedVerseId(next.id)
+      bibleActions.selectVerse(next)
+      document.getElementById(`verse-${next.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [currentChapter, effectiveSelectedVerseId])
+
+  /** Reset stable nav back to book step (lets user search again freely) */
+  const handleNavReset = useCallback(() => {
+    setNavStep("book")
+    setNavBookInput("")
+    setNavChapterInput("")
+    setTimeout(() => navBookRef.current?.focus(), 50)
+  }, [])
 
   const contextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contextSearchRequestIdRef = useRef(0)
@@ -537,23 +622,94 @@ export function SearchPanel() {
       {/* Book search tab */}
       {activeTab === "book" && (
         <>
-          {/* STICKY: Chapter header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2 min-h-9">
-            {selectedBook ?
-              <h3 className="text-sm font-semibold text-foreground">
-                {selectedBook.name} {chapter}
-              </h3> : null}
-            {selectedBook ? <div className="flex items-center gap-1">
+          {/* STICKY: 3-step stable navigation bar */}
+          <div className="flex shrink-0 flex-col gap-0 border-b border-border">
+            {/* Row 1: Book input + Go to Chapter */}
+            <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/50">
+              <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">Book</span>
+              <div className="relative flex-1">
+                <Input
+                  ref={navBookRef}
+                  value={navBookInput}
+                  onChange={(e) => {
+                    setNavBookInput(e.target.value)
+                    // also keep quick-input in sync so existing autocomplete still works
+                    setNavStep("book")
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleNavGoToChapter()
+                    }
+                  }}
+                  placeholder="Gen, Joh, Rev…"
+                  className="h-6 text-xs pr-1"
+                />
+                {/* Dropdown: show top 5 matches while typing */}
+                {navStep === "book" && navBookInput.trim().length >= 1 && navBookMatches.length > 0 && navBookMatches.length < books.length && (
+                  <div className="absolute top-full left-0 right-0 mt-0.5 z-50 max-h-44 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+                    {navBookMatches.slice(0, 6).map((b) => (
+                      <button
+                        key={b.book_number}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setNavBookInput(b.name)
+                          setSelectedBook(b)
+                          setNavStep("chapter")
+                          setNavChapterInput(String(chapter))
+                          setTimeout(() => navChapterRef.current?.focus(), 50)
+                        }}
+                        className="flex w-full items-center gap-2 px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <span className="font-semibold text-primary w-6 text-right shrink-0">{b.book_number}</span>
+                        <span>{b.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                disabled={navBookMatches.length === 0}
+                onClick={handleNavGoToChapter}
+              >
+                Chapter <ChevronRightIcon className="size-3" />
+              </Button>
+            </div>
+
+            {/* Row 2: Chapter input + Go to Verses (only shown once book is chosen) */}
+            <div className={cn(
+              "flex items-center gap-1.5 px-2 py-1.5 border-b border-border/50 transition-opacity",
+              navStep === "book" ? "opacity-40 pointer-events-none" : "opacity-100"
+            )}>
+              <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">Ch.</span>
+              <Input
+                ref={navChapterRef}
+                type="number"
+                min={1}
+                value={navChapterInput}
+                onChange={(e) => setNavChapterInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleNavGoToVerses()
+                  }
+                }}
+                placeholder="1"
+                className="h-6 text-xs w-16 shrink-0"
+              />
+              {/* Existing chapter prev/next buttons */}
               <Button
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => {
-                  if (chapter > 1) {
-                    setChapter((c) => c - 1)
-                    setSelectedVerseId(null)
-                  }
+                  const cur = parseInt(navChapterInput) || chapter
+                  const prev = Math.max(cur - 1, 1)
+                  setNavChapterInput(String(prev))
                 }}
-                disabled={chapter <= 1}
+                disabled={navStep === "book"}
               >
                 <ArrowLeftIcon className="size-3" />
               </Button>
@@ -561,13 +717,49 @@ export function SearchPanel() {
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => {
-                  setChapter((c) => c + 1)
-                  setSelectedVerseId(null)
+                  const cur = parseInt(navChapterInput) || chapter
+                  setNavChapterInput(String(cur + 1))
                 }}
+                disabled={navStep === "book"}
               >
                 <ArrowRightIcon className="size-3" />
               </Button>
-            </div> : null}
+              <div className="flex-1" />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                disabled={navStep === "book" || !navChapterInput}
+                onClick={handleNavGoToVerses}
+              >
+                Verses <ChevronRightIcon className="size-3" />
+              </Button>
+            </div>
+
+            {/* Row 3: Current position + verse up/down + reset */}
+            <div className="flex items-center gap-1 px-2 py-1">
+              <span className="flex-1 text-[10px] text-muted-foreground truncate">
+                {selectedBook
+                  ? <><span className="font-semibold text-foreground">{selectedBook.name}</span> {chapter}{effectiveSelectedVerseId ? `:${currentChapter.find(v => v.id === effectiveSelectedVerseId)?.verse ?? ""}` : ""}</>
+                  : <span className="italic">No book selected</span>
+                }
+              </span>
+              <Button variant="ghost" size="icon-xs" onClick={handleNavVerseUp} disabled={!selectedBook}>
+                <ArrowUpIcon className="size-3" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" onClick={handleNavVerseDown} disabled={!selectedBook}>
+                <ArrowDownIcon className="size-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="text-[9px] px-1.5 w-auto text-muted-foreground hover:text-foreground"
+                onClick={handleNavReset}
+                title="Start a new book search"
+              >
+                ↩ New
+              </Button>
+            </div>
           </div>
 
           {/* SCROLLABLE: Verse list — only THIS scrolls */}
