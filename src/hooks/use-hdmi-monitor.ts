@@ -53,6 +53,11 @@ export function useHdmiMonitor(): HdmiMonitorState {
       setHdmiDetected(true)
     }
 
+    if (initialLoadRef.current && result.length > 1) {
+      // Multiple monitors exist on startup → show the projector banner automatically
+      setHdmiDetected(true)
+    }
+
     if (result.length !== prev) {
       setPrevMonitorCount(prev)
       lastCountRef.current = result.length

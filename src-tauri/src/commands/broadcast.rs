@@ -104,9 +104,10 @@ pub fn open_broadcast_window(
                 height: size.height,
             }))
             .map_err(|e| e.to_string())?;
-        let _ = window.set_decorations(true);
-        let _ = window.set_resizable(true);
+        let _ = window.set_decorations(false);
+        let _ = window.set_resizable(false);
         let _ = window.set_always_on_top(false);
+        let _ = window.set_fullscreen(true);
         window.show().map_err(|e| e.to_string())?;
         let _ = window.set_focus();
         return Ok(());
@@ -126,9 +127,9 @@ pub fn open_broadcast_window(
     .title(title)
     .position(f64::from(pos.x), f64::from(pos.y))
     .inner_size(f64::from(size.width), f64::from(size.height))
-    .decorations(true)
-    .resizable(true)
-    .fullscreen(false)
+    .decorations(false)
+    .resizable(false)
+    .fullscreen(true)
     .always_on_top(false)
     .skip_taskbar(false)
     .focused(true)
