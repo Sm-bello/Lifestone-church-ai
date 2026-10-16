@@ -27,6 +27,15 @@ function QueueItemRow({
   const handlePresent = () => {
     useQueueStore.getState().setActive(index)
     bibleActions.selectVerse(item.verse)
+    // Navigate the search panel to this chapter so the full chapter is visible
+    // (same behaviour as the Recent Detections panel "Present" button)
+    if (item.verse.book_number > 0) {
+      bibleActions.navigateToVerse(
+        item.verse.book_number,
+        item.verse.chapter,
+        item.verse.verse,
+      )
+    }
     const translation = useBibleStore.getState().translations
       .find(t => t.id === useBibleStore.getState().activeTranslationId)?.abbreviation ?? "KJV"
     useBroadcastStore.getState().setLive(true)
