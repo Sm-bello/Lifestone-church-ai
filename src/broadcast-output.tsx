@@ -124,6 +124,70 @@ function useMediaSrc(media: MediaItem | null): string {
   return src
 }
 
+// ── Encouraging scripture verse carousel shown on standby ──────────────────
+const STANDBY_VERSES = [
+  { text: "I can do all things through Christ who strengthens me.",       ref: "Philippians 4:13" },
+  { text: "The LORD is my shepherd; I shall not want.",                   ref: "Psalm 23:1"       },
+  { text: "For God so loved the world that He gave His only Son.",        ref: "John 3:16"        },
+  { text: "Trust in the LORD with all your heart.",                       ref: "Proverbs 3:5"     },
+  { text: "Be strong and courageous. Do not be afraid.",                  ref: "Joshua 1:9"       },
+  { text: "The joy of the LORD is your strength.",                        ref: "Nehemiah 8:10"    },
+  { text: "With God all things are possible.",                            ref: "Matthew 19:26"    },
+  { text: "He gives power to the faint, and strength to the powerless.",  ref: "Isaiah 40:29"     },
+]
+
+function StandbyVerseCarousel() {
+  const [idx, setIdx] = useState(0)
+  const [visible, setVisible] = useState(true)
+  const DISPLAY_MS = 6000
+  const FADE_MS = 800
+
+  useEffect(() => {
+    const cycle = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % STANDBY_VERSES.length)
+        setVisible(true)
+      }, FADE_MS)
+    }, DISPLAY_MS)
+    return () => clearInterval(cycle)
+  }, [])
+
+  const verse = STANDBY_VERSES[idx]
+  return (
+    <div style={{
+      maxWidth: "clamp(280px, 46vw, 680px)",
+      textAlign: "center",
+      transition: `opacity ${FADE_MS}ms ease, transform ${FADE_MS}ms ease`,
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(8px)",
+    }}>
+      <div style={{
+        fontSize: "clamp(0.85rem, 1.8vw, 1.45rem)",
+        fontWeight: 400,
+        fontStyle: "italic",
+        color: "rgba(226, 232, 240, 0.92)",
+        lineHeight: 1.65,
+        marginBottom: "clamp(6px, 1vh, 14px)",
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        textShadow: "0 2px 16px rgba(0,0,0,0.7)",
+      }}>
+        "{verse.text}"
+      </div>
+      <div style={{
+        fontSize: "clamp(0.6rem, 1vw, 0.9rem)",
+        fontWeight: 600,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color: "rgba(234, 179, 8, 0.85)",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}>
+        — {verse.ref}
+      </div>
+    </div>
+  )
+}
+
 export function BroadcastCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mediaContainerRef = useRef<HTMLDivElement>(null)
@@ -520,7 +584,7 @@ export function BroadcastCanvas() {
         />
       )}
 
-      {/* Standby Church Live Display (EasyWorship Style) when no verse is active */}
+      {/* ── Standby Screen: animated logo + scripture verse carousel ── */}
       {!activeVerse && !currentMedia && (
         <div
           style={{
@@ -531,116 +595,143 @@ export function BroadcastCanvas() {
             alignItems: "center",
             justifyContent: "center",
             pointerEvents: "none",
-            background: "radial-gradient(circle at 50% 45%, rgba(30, 41, 59, 0.45) 0%, rgba(5, 7, 12, 0.95) 75%)",
+            overflow: "hidden",
+            background:
+              "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(20, 30, 55, 0.8) 0%, rgba(4, 6, 14, 1) 80%)",
           }}
         >
-          {/* Subtle Church Cross & Radiance Emblem */}
-          <div
-            style={{
-              position: "relative",
-              width: 120,
-              height: 120,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 24,
-            }}
-          >
-            <div
+          {/* ── Injected CSS animations (no Tailwind needed in this window) ── */}
+          <style>{`
+            @keyframes sb-spin       { from { transform: rotate(0deg)   } to { transform: rotate(360deg)  } }
+            @keyframes sb-spin-rev   { from { transform: rotate(0deg)   } to { transform: rotate(-360deg) } }
+            @keyframes sb-pulse-glow { 0%,100% { opacity: 0.55; transform: scale(1)    }
+                                       50%      { opacity: 0.9;  transform: scale(1.12) } }
+            @keyframes sb-pulse-dot  { 0%,100% { box-shadow: 0 0 6px 2px #22c55e  }
+                                       50%      { box-shadow: 0 0 18px 6px #22c55e } }
+            @keyframes sb-logo-float { 0%,100% { transform: translateY(0px)   }
+                                       50%      { transform: translateY(-10px) } }
+            @keyframes sb-fade-verse { 0%       { opacity: 0; transform: translateY(12px) }
+                                       12%,88%  { opacity: 1; transform: translateY(0)    }
+                                       100%     { opacity: 0; transform: translateY(-8px) } }
+            @keyframes sb-shimmer    { 0%   { background-position: -400px 0 }
+                                       100% { background-position:  400px 0 } }
+          `}</style>
+
+          {/* ── Deep background ambient glow ── */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(ellipse 55% 45% at 50% 38%, rgba(99, 102, 241, 0.18) 0%, transparent 70%)",
+          }} />
+
+          {/* ── Outer slowly-rotating light-ray ring ── */}
+          <div style={{
+            position: "absolute",
+            width: "min(55vw, 55vh)", height: "min(55vw, 55vh)",
+            borderRadius: "50%",
+            background: "conic-gradient(from 0deg, transparent 0%, rgba(234,179,8,0.06) 10%, transparent 20%, rgba(99,102,241,0.05) 35%, transparent 50%, rgba(234,179,8,0.07) 65%, transparent 80%, rgba(99,102,241,0.04) 90%, transparent 100%)",
+            animation: "sb-spin 28s linear infinite",
+            pointerEvents: "none",
+          }} />
+
+          {/* ── Inner slowly-rotating ring (opposite direction) ── */}
+          <div style={{
+            position: "absolute",
+            width: "min(38vw, 38vh)", height: "min(38vw, 38vh)",
+            borderRadius: "50%",
+            border: "1px solid rgba(234, 179, 8, 0.08)",
+            boxShadow: "0 0 40px rgba(234, 179, 8, 0.06) inset",
+            animation: "sb-spin-rev 18s linear infinite",
+            pointerEvents: "none",
+          }} />
+
+          {/* ── Golden halo glow behind logo ── */}
+          <div style={{
+            position: "absolute",
+            width: "min(22vw, 22vh)", height: "min(22vw, 22vh)",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(234,179,8,0.28) 0%, rgba(234,179,8,0.08) 50%, transparent 75%)",
+            filter: "blur(18px)",
+            animation: "sb-pulse-glow 4s ease-in-out infinite",
+            pointerEvents: "none",
+          }} />
+
+          {/* ── Logo mark ── */}
+          <div style={{ animation: "sb-logo-float 6s ease-in-out infinite", marginBottom: "clamp(16px, 2.5vh, 32px)" }}>
+            <img
+              src="/rhema.svg"
+              alt="Lifestone"
               style={{
-                position: "absolute",
-                width: 100,
-                height: 100,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(234, 179, 8, 0.22) 0%, rgba(234, 179, 8, 0.0) 70%)",
-                filter: "blur(8px)",
+                width: "clamp(72px, 10vw, 140px)",
+                height: "clamp(72px, 10vw, 140px)",
+                filter: "drop-shadow(0 0 28px rgba(234, 179, 8, 0.55)) drop-shadow(0 0 8px rgba(255,255,255,0.15))",
+                userSelect: "none",
               }}
             />
-            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              {/* Modern elegant Latin Cross */}
-              <path
-                d="M12 3V21M7 8H17"
-                stroke="#eab308"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="8"
-                r="3.5"
-                stroke="#fef08a"
-                strokeWidth="1"
-                strokeDasharray="2 2"
-                opacity="0.6"
-              />
-            </svg>
           </div>
 
-          {/* Title */}
-          <div
-            style={{
-              fontSize: "2rem",
-              fontWeight: 700,
-              letterSpacing: "0.25em",
-              textTransform: "uppercase",
-              color: "#ffffff",
-              textShadow: "0 2px 16px rgba(0,0,0,0.8), 0 0 30px rgba(234, 179, 8, 0.25)",
-              marginBottom: 8,
-              fontFamily: "inherit",
-            }}
-          >
+          {/* ── LIFESTONE wordmark ── */}
+          <div style={{
+            fontSize: "clamp(1.5rem, 3.5vw, 2.8rem)",
+            fontWeight: 800,
+            letterSpacing: "0.3em",
+            textTransform: "uppercase",
+            color: "#ffffff",
+            textShadow: "0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(234, 179, 8, 0.3)",
+            marginBottom: "clamp(4px, 0.8vh, 10px)",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            background: "linear-gradient(135deg, #ffffff 30%, #fde68a 60%, #ffffff 90%)",
+            backgroundSize: "800px 100%",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            animation: "sb-shimmer 5s linear infinite",
+          }}>
             LIFESTONE
           </div>
 
-          {/* Subtitle / Live Output Badge */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 16px",
-              borderRadius: 9999,
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              backgroundColor: "rgba(15, 23, 42, 0.65)",
-              backdropFilter: "blur(12px)",
-              marginBottom: 16,
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                backgroundColor: "#22c55e",
-                boxShadow: "0 0 10px #22c55e",
-                display: "inline-block",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                color: "#e2e8f0",
-              }}
-            >
-              LIVE OUTPUT · {OUTPUT_ID === "alt" ? "ALT PROJECTOR" : "PROGRAM"}
-            </span>
+          {/* ── Tagline ── */}
+          <div style={{
+            fontSize: "clamp(0.65rem, 1.1vw, 0.95rem)",
+            fontWeight: 500,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "rgba(148, 163, 184, 0.75)",
+            marginBottom: "clamp(20px, 3.5vh, 40px)",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+          }}>
+            Real-time Bible for Live Worship
           </div>
 
-          <div
-            style={{
-              fontSize: "0.875rem",
-              color: "rgba(148, 163, 184, 0.8)",
-              letterSpacing: "0.05em",
-              maxWidth: 420,
-              textAlign: "center",
-              lineHeight: 1.5,
-            }}
-          >
-            Connected & Ready · Detected scriptures and selected verses will project here automatically
+          {/* ── Rotating encouraging scripture carousel ── */}
+          <StandbyVerseCarousel />
+
+          {/* ── Live-ready badge ── */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "7px 20px",
+            borderRadius: 9999,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            backgroundColor: "rgba(10, 16, 36, 0.75)",
+            backdropFilter: "blur(14px)",
+            marginTop: "clamp(20px, 3.5vh, 44px)",
+          }}>
+            <span style={{
+              width: 9, height: 9, borderRadius: "50%",
+              backgroundColor: "#22c55e",
+              display: "inline-block",
+              animation: "sb-pulse-dot 2.2s ease-in-out infinite",
+            }} />
+            <span style={{
+              fontSize: "clamp(0.6rem, 0.9vw, 0.8rem)",
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "#e2e8f0",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+            }}>
+              {OUTPUT_ID === "alt" ? "Alt Projector" : "Program Output"} · Connected & Ready
+            </span>
           </div>
         </div>
       )}
