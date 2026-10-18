@@ -43,6 +43,8 @@ interface MediaUpdatePayload {
   isPlaying: boolean
   base64Data?: string
   outputId?: string
+  isMuted?: boolean
+  playbackMode?: 'loop' | 'play-once'
 }
 
 function resolveMediaSrc(media: MediaItem | null): string {
@@ -206,10 +208,26 @@ export function BroadcastCanvas() {
 
   const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
+  const [mediaMuted, setMediaMuted] = useState(true)
+  const [mediaLoop, setMediaLoop] = useState(true)
   const [activeVerse, setActiveVerse] = useState<VerseRenderData | null>(null)
   const [activeTheme, setActiveTheme] = useState<BroadcastTheme | null>(null)
   const [showControls, setShowControls] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = mediaMuted
+    }
+  }, [mediaMuted])
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.loop = mediaLoop
+    }
+  }, [mediaLoop])
 
   const mediaSrc = useMediaSrc(currentMedia)
 
@@ -410,6 +428,10 @@ export function BroadcastCanvas() {
       if (payload.outputId && payload.outputId !== OUTPUT_ID) return
       setCurrentMedia(payload.media)
       setMediaReady(false)
+      const isMuted = payload.isMuted ?? payload.media?.isMuted ?? true
+      const playbackMode = payload.playbackMode ?? payload.media?.playbackMode ?? "loop"
+      setMediaMuted(isMuted)
+      setMediaLoop(playbackMode !== "play-once")
     }
 
     const unlistenWindowMedia = currentWindow.listen<MediaUpdatePayload>(
@@ -552,6 +574,7 @@ export function BroadcastCanvas() {
       {/* Media Layer (Video Background) */}
       {currentMedia?.type === "video" && mediaSrc && (
         <video
+          ref={videoRef}
           key={mediaSrc}
           src={mediaSrc}
           style={{
@@ -563,9 +586,9 @@ export function BroadcastCanvas() {
             objectFit: "cover",
             display: "block",
           }}
-          muted
+          muted={mediaMuted}
           playsInline
-          loop
+          loop={mediaLoop}
           preload="auto"
           autoPlay
           onCanPlay={(e) => {

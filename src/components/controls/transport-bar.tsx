@@ -3,13 +3,14 @@ import { invoke } from "@tauri-apps/api/core"
 import { LevelMeter } from "@/components/ui/level-meter"
 import { LiveIndicator } from "@/components/ui/live-indicator"
 import { Badge } from "@/components/ui/badge"
-import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorPlay } from "lucide-react"
+import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorPlay, Music2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { HymnConsole } from "@/components/hymn-console"
 import { ThemeDesigner } from "@/components/broadcast/theme-designer"
 import { BroadcastSettings } from "@/components/broadcast/broadcast-settings"
 import { HdmiProjectorBanner } from "@/components/broadcast/hdmi-projector-banner"
-import { useAudioStore, useTranscriptStore, useBroadcastStore } from "@/stores"
+import { useAudioStore, useTranscriptStore, useBroadcastStore, useHymnStore } from "@/stores"
 import { useTheme } from "@/components/theme-provider"
 import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,8 @@ export function TransportBar() {
   const { theme, setTheme } = useTheme()
   const audioLevel = useAudioStore((s) => s.level)
   const isTranscribing = useTranscriptStore((s) => s.isTranscribing)
+  const isHymnOpen = useHymnStore((s) => s.isConsoleOpen)
+  const activeStanzaId = useHymnStore((s) => s.activeStanzaId)
   const [broadcastOpen, setBroadcastOpen] = useState(false)
   const [projectorOpen, setProjectorOpen] = useState(false)
   const [bannerVisible, setBannerVisible] = useState(false)
@@ -131,6 +134,19 @@ export function TransportBar() {
             <MonitorPlay className="size-3.5" />
           </Button>
 
+          {/* Hymnal / Worship Console Toggle */}
+          <Button
+            variant={isHymnOpen || activeStanzaId ? "default" : "ghost"}
+            size="icon-sm"
+            title={activeStanzaId ? "Hymn presenting – click to view console" : "Hymnal & Worship Songs"}
+            onClick={() => useHymnStore.getState().openConsole()}
+            className={cn(
+              activeStanzaId && "bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse"
+            )}
+          >
+            <Music2 className="size-3.5" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon-sm"
@@ -164,6 +180,7 @@ export function TransportBar() {
           </Button>
           <ThemeDesigner />
           <SettingsDialog />
+          <HymnConsole />
         </div>
       </div>
 

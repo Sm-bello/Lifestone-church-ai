@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const emitToMock = vi.fn()
+const emitMock = vi.fn()
 
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: emitToMock,
+  emit: emitMock,
 }))
 
 describe("broadcast store sync", () => {
   beforeEach(async () => {
     emitToMock.mockReset()
     emitToMock.mockResolvedValue(undefined)
+    emitMock.mockReset()
+    emitMock.mockResolvedValue(undefined)
     vi.resetModules()
   })
 
@@ -27,7 +31,7 @@ describe("broadcast store sync", () => {
     emitToMock.mockClear()
     useBroadcastStore.getState().syncBroadcastOutput()
 
-    expect(emitToMock).toHaveBeenCalledTimes(2)
+    expect(emitToMock).toHaveBeenCalledTimes(4)
     expect(emitToMock).toHaveBeenCalledWith(
       "broadcast",
       "broadcast:verse-update",

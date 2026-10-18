@@ -53,6 +53,7 @@ describe("use-transcription", () => {
         apiKey: "", // whisper path never forwards the key
         deviceId: "dev-42",
         gain: 1.5,
+        model: "ggml-nigerian.bin",
         provider: "whisper",
       })
     })

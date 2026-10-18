@@ -5,7 +5,8 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { readFile } from "@tauri-apps/plugin-fs"
 import { emit } from "@tauri-apps/api/event"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, Play, Image } from "lucide-react"
+import { Plus, Trash2, Play, Image, Repeat, Volume2, VolumeX } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const blobCache = new Map<string, string>()
 
@@ -61,10 +62,19 @@ export function MediaBucket() {
   const {
     mediaLibrary,
     currentMedia,
+    isLive,
+    mediaPlaybackMode,
+    isMediaMuted,
     addToLibrary,
     removeFromLibrary,
     setCurrentMedia,
+    setLive,
+    setMediaPlaybackMode,
+    toggleMediaMute,
   } = useBroadcastStore()
+
+  const playbackMode = currentMedia?.playbackMode ?? mediaPlaybackMode ?? "loop"
+  const isMuted = currentMedia?.isMuted ?? isMediaMuted ?? true
 
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map())
@@ -93,20 +103,25 @@ export function MediaBucket() {
     return () => { cancelled = true }
   }, [mediaLibrary])
 
-  // When currentMedia changes, send to broadcast windows
+  // When currentMedia or isLive changes, send to broadcast windows (gated by isLive)
   useEffect(() => {
     const sendMedia = async () => {
-      if (!currentMedia) {
+      if (!isLive || !currentMedia) {
         await emit("broadcast:media-update", { media: null, isPlaying: false })
         return
       }
+
+      const activePlaybackMode = currentMedia.playbackMode ?? mediaPlaybackMode ?? "loop"
+      const activeMuted = currentMedia.isMuted ?? isMediaMuted ?? true
 
       if (currentMedia.type === "image") {
         try {
           const base64 = await fileToBase64(currentMedia.path)
           await emit("broadcast:media-update", {
-            media: { ...currentMedia, base64Data: base64 },
+            media: { ...currentMedia, base64Data: base64, playbackMode: activePlaybackMode, isMuted: activeMuted },
             isPlaying: true,
+            playbackMode: activePlaybackMode,
+            isMuted: activeMuted,
           })
         } catch (e) {
           console.warn("Failed to send image base64:", e)
@@ -114,14 +129,16 @@ export function MediaBucket() {
       } else if (currentMedia.type === "video") {
         const url = blobUrls.get(currentMedia.id) || currentMedia.assetUrl
         await emit("broadcast:media-update", {
-          media: { ...currentMedia, assetUrl: url },
+          media: { ...currentMedia, assetUrl: url, playbackMode: activePlaybackMode, isMuted: activeMuted },
           isPlaying: true,
+          playbackMode: activePlaybackMode,
+          isMuted: activeMuted,
         })
       }
     }
 
     sendMedia()
-  }, [currentMedia, blobUrls])
+  }, [currentMedia, isLive, blobUrls, mediaPlaybackMode, isMediaMuted])
 
   const handleAdd = async () => {
     const selected = await open({
@@ -180,6 +197,66 @@ export function MediaBucket() {
         </Button>
       </div>
 
+      {/* Media Playback & Audio Controls Bar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b shrink-0 bg-muted/20">
+        {/* Playback mode toggle */}
+        <div className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setMediaPlaybackMode("loop")}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
+              playbackMode === "loop"
+                ? "bg-primary/15 text-primary font-semibold shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Loop video continuously"
+          >
+            <Repeat className="w-3.5 h-3.5" />
+            <span>Loop</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMediaPlaybackMode("play-once")}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
+              playbackMode === "play-once"
+                ? "bg-primary/15 text-primary font-semibold shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Play video once"
+          >
+            <Play className="w-3.5 h-3.5" />
+            <span>Once</span>
+          </button>
+        </div>
+
+        {/* Audio toggle */}
+        <button
+          type="button"
+          onClick={toggleMediaMute}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+            !isMuted
+              ? "text-blue-500 border-blue-500/40 bg-blue-500/15 hover:bg-blue-500/25"
+              : "text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted/50"
+          )}
+          title={isMuted ? "Audio muted (speakerless)" : "Audio unmuted (on-speaker)"}
+        >
+          {!isMuted ? (
+            <>
+              <Volume2 className="w-3.5 h-3.5 text-blue-500" />
+              <span>Audio</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="w-3.5 h-3.5" />
+              <span>Audio</span>
+            </>
+          )}
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-3 min-h-0">
         {mediaLibrary.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
@@ -191,7 +268,7 @@ export function MediaBucket() {
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {mediaLibrary.map((item) => {
-              const isActive = currentMedia?.id === item.id
+              const isActive = currentMedia?.id === item.id && isLive
               const isHovered = hoveredId === item.id
               const hasError = loadErrors.has(item.id)
               const displayUrl = item.assetUrl || blobUrls.get(item.id)
@@ -213,10 +290,11 @@ export function MediaBucket() {
                     isActive ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"
                   }`}
                   onClick={() => {
-                    const nextItem = isActive ? null : item
-                    setCurrentMedia(nextItem)
-                    if (nextItem) {
-                      useBroadcastStore.getState().setLive(true)
+                    if (isActive) {
+                      setCurrentMedia(null)
+                    } else {
+                      setLive(true)
+                      setCurrentMedia(item)
                     }
                   }}
                   onMouseEnter={() => setHoveredId(item.id)}

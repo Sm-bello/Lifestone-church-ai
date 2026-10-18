@@ -20,6 +20,8 @@ interface BroadcastState {
   currentMediaIndex: number
   isMediaPlaying: boolean
   mediaLibrary: MediaItem[]
+  mediaPlaybackMode: "loop" | "play-once"
+  isMediaMuted: boolean
 
   // Designer state
   isDesignerOpen: boolean
@@ -56,6 +58,9 @@ interface BroadcastState {
 
   // Media actions
   setCurrentMedia: (item: MediaItem | null) => void
+  setMediaPlaybackMode: (mode: "loop" | "play-once") => void
+  toggleMediaMute: () => void
+  setMediaMuted: (muted: boolean) => void
   setMediaQueue: (queue: MediaItem[]) => void
   setCurrentMediaIndex: (index: number) => void
   nextMedia: () => void
@@ -127,6 +132,8 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   currentMediaIndex: -1,
   isMediaPlaying: true,
   mediaLibrary: [],
+  mediaPlaybackMode: "loop",
+  isMediaMuted: true,
   isDesignerOpen: false,
   editingThemeId: null,
   renamingThemeId: null,
@@ -214,11 +221,19 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     }).catch(() => {})
 
     // Also sync media to broadcast window
-    const mediaPayload = {
-      media: s.currentMedia,
-      isPlaying: s.isMediaPlaying,
-      outputId,
-    }
+    const mediaPayload = s.isLive
+      ? {
+          media: s.currentMedia,
+          isPlaying: s.isMediaPlaying,
+          outputId,
+          isMuted: s.currentMedia?.isMuted ?? s.isMediaMuted ?? true,
+          playbackMode: s.currentMedia?.playbackMode ?? s.mediaPlaybackMode ?? "loop",
+        }
+      : {
+          media: null,
+          isPlaying: false,
+          outputId,
+        }
     void emitTo(label, "broadcast:media-update", mediaPayload).catch(() => {})
     void emit("broadcast:media-update", mediaPayload).catch(() => {})
   },
@@ -314,8 +329,51 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
 
   // Media actions
   setCurrentMedia: (item) => {
-    set({ currentMedia: item })
-    get().syncBroadcastMedia()
+    const s = get()
+    const nextItem = item
+      ? {
+          ...item,
+          playbackMode: item.playbackMode ?? s.mediaPlaybackMode,
+          isMuted: item.isMuted ?? s.isMediaMuted,
+        }
+      : null
+    set({ currentMedia: nextItem })
+    if (get().isLive) {
+      get().syncBroadcastMedia()
+    }
+  },
+
+  setMediaPlaybackMode: (mode) => {
+    set((s) => ({
+      mediaPlaybackMode: mode,
+      currentMedia: s.currentMedia ? { ...s.currentMedia, playbackMode: mode } : null,
+    }))
+    if (get().isLive) {
+      get().syncBroadcastMedia()
+    }
+  },
+
+  toggleMediaMute: () => {
+    set((s) => {
+      const nextMuted = !(s.currentMedia?.isMuted ?? s.isMediaMuted)
+      return {
+        isMediaMuted: nextMuted,
+        currentMedia: s.currentMedia ? { ...s.currentMedia, isMuted: nextMuted } : null,
+      }
+    })
+    if (get().isLive) {
+      get().syncBroadcastMedia()
+    }
+  },
+
+  setMediaMuted: (muted) => {
+    set((s) => ({
+      isMediaMuted: muted,
+      currentMedia: s.currentMedia ? { ...s.currentMedia, isMuted: muted } : null,
+    }))
+    if (get().isLive) {
+      get().syncBroadcastMedia()
+    }
   },
 
   setMediaQueue: (queue) => {
@@ -392,7 +450,17 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
 
   syncBroadcastMedia: () => {
     const s = get()
-    const payload = { media: s.currentMedia, isPlaying: s.isMediaPlaying }
+    const payload = s.isLive
+      ? {
+          media: s.currentMedia,
+          isPlaying: s.isMediaPlaying,
+          isMuted: s.currentMedia?.isMuted ?? s.isMediaMuted ?? true,
+          playbackMode: s.currentMedia?.playbackMode ?? s.mediaPlaybackMode ?? "loop",
+        }
+      : {
+          media: null,
+          isPlaying: false,
+        }
     void emitTo("broadcast", "broadcast:media-update", payload).catch(() => {})
     void emitTo("broadcast-alt", "broadcast:media-update", payload).catch(() => {})
     void emit("broadcast:media-update", payload).catch(() => {})

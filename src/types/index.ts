@@ -17,3 +17,4 @@ export type {
   NdiSessionInfo,
   NdiStartRequest,
 } from "./ndi"
+export type { Hymn, HymnStanza } from "./hymn"

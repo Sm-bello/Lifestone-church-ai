@@ -7,6 +7,8 @@ export interface MediaItem {
   thumbnail?: string
   duration?: number    // seconds, for videos
   createdAt: number
+  playbackMode?: 'loop' | 'play-once'   // Default: 'loop'
+  isMuted?: boolean                       // Default: true (speakerless)
 }
 
 export interface MediaBackground {
