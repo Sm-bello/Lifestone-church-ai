@@ -1,16 +1,17 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { LevelMeter } from "@/components/ui/level-meter"
 import { LiveIndicator } from "@/components/ui/live-indicator"
 import { Badge } from "@/components/ui/badge"
-import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorPlay, Music2 } from "lucide-react"
+import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorPlay, Music2, BellIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { HymnConsole } from "@/components/hymn-console"
+import { UpdateDialog } from "@/components/update-dialog"
 import { ThemeDesigner } from "@/components/broadcast/theme-designer"
 import { BroadcastSettings } from "@/components/broadcast/broadcast-settings"
 import { HdmiProjectorBanner } from "@/components/broadcast/hdmi-projector-banner"
-import { useAudioStore, useTranscriptStore, useBroadcastStore, useHymnStore } from "@/stores"
+import { useAudioStore, useTranscriptStore, useBroadcastStore, useHymnStore, useUpdateStore } from "@/stores"
 import { useTheme } from "@/components/theme-provider"
 import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
 import { cn } from "@/lib/utils"
@@ -21,9 +22,16 @@ export function TransportBar() {
   const isTranscribing = useTranscriptStore((s) => s.isTranscribing)
   const isHymnOpen = useHymnStore((s) => s.isConsoleOpen)
   const activeStanzaId = useHymnStore((s) => s.activeStanzaId)
+  const hasUpdate = useUpdateStore((s) => s.hasUpdate)
+  const latestRelease = useUpdateStore((s) => s.latestRelease)
   const [broadcastOpen, setBroadcastOpen] = useState(false)
   const [projectorOpen, setProjectorOpen] = useState(false)
   const [bannerVisible, setBannerVisible] = useState(false)
+
+  // Initialize quiet background release listener on startup
+  useEffect(() => {
+    void useUpdateStore.getState().init()
+  }, [])
 
   const hdmiState = useHdmiMonitor()
 
@@ -179,6 +187,28 @@ export function TransportBar() {
             <PaletteIcon className="size-3.5" />
           </Button>
           <ThemeDesigner />
+          {/* Release Notification Bell with Persistent Red Dot */}
+          <div className="relative flex items-center">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title={
+                hasUpdate
+                  ? `New update available: v${latestRelease?.version}`
+                  : "Notifications & Updates"
+              }
+              onClick={() => useUpdateStore.getState().openDialog()}
+            >
+              <BellIcon className="size-3.5" />
+            </Button>
+            {hasUpdate && (
+              <span
+                className="pointer-events-none absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500 animate-pulse ring-2 ring-card"
+                title={`New release available: v${latestRelease?.version}`}
+              />
+            )}
+          </div>
+          <UpdateDialog />
           <SettingsDialog />
           <HymnConsole />
         </div>

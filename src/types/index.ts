@@ -18,3 +18,4 @@ export type {
   NdiStartRequest,
 } from "./ndi"
 export type { Hymn, HymnStanza } from "./hymn"
+export type { UpdateInfo, ReleaseAsset } from "./update"
