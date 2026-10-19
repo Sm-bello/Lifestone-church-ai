@@ -57,18 +57,26 @@ export function HymnConsole() {
     }
   }, [isConsoleOpen, handleKeyDown])
 
-  // Filtered hymns based on search
+  // Filtered hymns based on search and sorted by number
   const filteredHymns = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return hymns
-
-    return hymns.filter((hymn) => {
-      if (hymn.title.toLowerCase().includes(q)) return true
-      if (hymn.number && hymn.number.toString().includes(q)) return true
-      if (hymn.author && hymn.author.toLowerCase().includes(q)) return true
-      return hymn.stanzas.some((st) =>
-        st.lines.some((line) => line.toLowerCase().includes(q))
-      )
+    let list = hymns
+    if (q) {
+      list = hymns.filter((hymn) => {
+        if (hymn.title.toLowerCase().includes(q)) return true
+        if (hymn.number && hymn.number.toString().includes(q)) return true
+        if (hymn.category && hymn.category.toLowerCase().includes(q)) return true
+        if (hymn.author && hymn.author.toLowerCase().includes(q)) return true
+        return hymn.stanzas.some((st) =>
+          st.lines.some((line) => line.toLowerCase().includes(q))
+        )
+      })
+    }
+    return [...list].sort((a, b) => {
+      if (a.number != null && b.number != null) return a.number - b.number
+      if (a.number != null) return -1
+      if (b.number != null) return 1
+      return a.title.localeCompare(b.title)
     })
   }, [hymns, searchQuery])
 
@@ -243,8 +251,8 @@ export function HymnConsole() {
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="truncate max-w-[200px]">
-                            {hymn.author || "Traditional"}
+                          <span className="truncate max-w-[200px] capitalize">
+                            {hymn.category || hymn.author || "Gospel Hymns"}
                           </span>
                           <span className="shrink-0 text-[11px]">
                             {hymn.stanzas.length} stanzas

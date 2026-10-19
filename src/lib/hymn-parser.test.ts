@@ -2,25 +2,20 @@ import { describe, it, expect } from "vitest"
 import { parseHymnText, BUILTIN_HYMNS } from "./hymn-parser"
 
 describe("hymn-parser", () => {
-  it("includes all requested builtin hymns with stanzas", () => {
-    expect(BUILTIN_HYMNS.length).toBeGreaterThanOrEqual(6)
+  it("includes all 260 builtin GHS hymns with stanzas", () => {
+    expect(BUILTIN_HYMNS.length).toBe(260)
 
     const titles = BUILTIN_HYMNS.map((h) => h.title)
-    expect(titles).toContain("Amazing Grace")
-    expect(titles).toContain("How Great Thou Art")
-    expect(titles).toContain("Blessed Assurance")
-    expect(titles).toContain("Great Is Thy Faithfulness")
-    expect(titles).toContain("What A Friend We Have In Jesus")
-    expect(titles).toContain("To God Be The Glory")
+    expect(titles).toContain("All Your Anxiety")
+    expect(titles).toContain("Holy Holy Holy")
+    expect(titles).toContain("Redeemed")
+    expect(titles).toContain("To The Work")
 
-    // Check Amazing Grace has 4 verses
-    const amazingGrace = BUILTIN_HYMNS.find((h) => h.title === "Amazing Grace")!
-    expect(amazingGrace.stanzas).toHaveLength(4)
-    expect(amazingGrace.stanzas.every((s) => s.type === "verse")).toBe(true)
-
-    // Check How Great Thou Art has chorus
-    const howGreat = BUILTIN_HYMNS.find((h) => h.title === "How Great Thou Art")!
-    expect(howGreat.stanzas.some((s) => s.type === "chorus")).toBe(true)
+    // Check first hymn has proper stanzas and chorus
+    const hymn1 = BUILTIN_HYMNS.find((h) => h.number === 1)!
+    expect(hymn1.title).toBe("All Your Anxiety")
+    expect(hymn1.stanzas.length).toBeGreaterThanOrEqual(4)
+    expect(hymn1.stanzas.some((s) => s.type === "chorus")).toBe(true)
   })
 
   it("parses hymns with labeled verses and choruses", () => {

@@ -168,13 +168,13 @@ function StandbyVerseCarousel() {
         fontSize: "clamp(0.85rem, 1.8vw, 1.45rem)",
         fontWeight: 400,
         fontStyle: "italic",
-        color: "rgba(226, 232, 240, 0.92)",
+        color: "rgba(226, 232, 240, 0.95)",
         lineHeight: 1.65,
         marginBottom: "clamp(6px, 1vh, 14px)",
         fontFamily: "Georgia, 'Times New Roman', serif",
         textShadow: "0 2px 16px rgba(0,0,0,0.7)",
       }}>
-        "{verse.text}"
+        {verse.text}
       </div>
       <div style={{
         fontSize: "clamp(0.6rem, 1vw, 0.9rem)",
@@ -210,12 +210,18 @@ export function BroadcastCanvas() {
   const [mediaReady, setMediaReady] = useState(false)
   const [mediaMuted, setMediaMuted] = useState(true)
   const [mediaLoop, setMediaLoop] = useState(true)
+  const [mediaPlaying, setMediaPlaying] = useState(true)
   const [activeVerse, setActiveVerse] = useState<VerseRenderData | null>(null)
   const [activeTheme, setActiveTheme] = useState<BroadcastTheme | null>(null)
   const [showControls, setShowControls] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
+  const currentMediaRef = useRef<MediaItem | null>(null)
+
+  useEffect(() => {
+    currentMediaRef.current = currentMedia
+  }, [currentMedia])
 
   useEffect(() => {
     if (videoRef.current) {
@@ -228,6 +234,16 @@ export function BroadcastCanvas() {
       videoRef.current.loop = mediaLoop
     }
   }, [mediaLoop])
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (mediaPlaying) {
+        videoRef.current.play().catch(() => {})
+      } else {
+        videoRef.current.pause()
+      }
+    }
+  }, [mediaPlaying])
 
   const mediaSrc = useMediaSrc(currentMedia)
 
@@ -426,12 +442,35 @@ export function BroadcastCanvas() {
 
     const handleMediaUpdate = (payload: MediaUpdatePayload) => {
       if (payload.outputId && payload.outputId !== OUTPUT_ID) return
-      setCurrentMedia(payload.media)
-      setMediaReady(false)
+
       const isMuted = payload.isMuted ?? payload.media?.isMuted ?? true
       const playbackMode = payload.playbackMode ?? payload.media?.playbackMode ?? "loop"
+      const shouldLoop = playbackMode !== "play-once"
+      const shouldPlay = payload.isPlaying ?? true
+
       setMediaMuted(isMuted)
-      setMediaLoop(playbackMode !== "play-once")
+      setMediaLoop(shouldLoop)
+      setMediaPlaying(shouldPlay)
+
+      // Direct, immediate DOM update on video element for strongest playback grip
+      if (videoRef.current) {
+        videoRef.current.muted = isMuted
+        videoRef.current.loop = shouldLoop
+        if (!shouldPlay) {
+          videoRef.current.pause()
+        } else if (payload.media && videoRef.current.paused) {
+          videoRef.current.play().catch(() => {})
+        }
+      }
+
+      // If media hasn't changed (same id, or both null), do NOT reset mediaReady or reload
+      const prevMedia = currentMediaRef.current
+      if (prevMedia && payload.media && prevMedia.id === payload.media.id && (prevMedia.assetUrl === payload.media.assetUrl || !payload.media.assetUrl)) {
+        return
+      }
+
+      setCurrentMedia(payload.media)
+      setMediaReady(false)
     }
 
     const unlistenWindowMedia = currentWindow.listen<MediaUpdatePayload>(
@@ -590,16 +629,25 @@ export function BroadcastCanvas() {
           playsInline
           loop={mediaLoop}
           preload="auto"
-          autoPlay
+          autoPlay={mediaPlaying}
           onCanPlay={(e) => {
             setMediaReady(true)
-            e.currentTarget.play().catch(() => {})
+            if (mediaPlaying) {
+              e.currentTarget.play().catch(() => {})
+            }
           }}
           onLoadedData={(e) => {
             setMediaReady(true)
-            e.currentTarget.play().catch(() => {})
+            if (mediaPlaying) {
+              e.currentTarget.play().catch(() => {})
+            }
             draw()
             pushNdiBurst()
+          }}
+          onEnded={(e) => {
+            if (!mediaLoop) {
+              e.currentTarget.pause()
+            }
           }}
           onError={() => {
             setMediaReady(false)
@@ -681,12 +729,13 @@ export function BroadcastCanvas() {
           {/* ── Logo mark ── */}
           <div style={{ animation: "sb-logo-float 6s ease-in-out infinite", marginBottom: "clamp(16px, 2.5vh, 32px)" }}>
             <img
-              src="/rhema.svg"
-              alt="Lifestone"
+              src="/lifestone-logo.png"
+              alt="Lifestone Church AI"
               style={{
-                width: "clamp(72px, 10vw, 140px)",
-                height: "clamp(72px, 10vw, 140px)",
-                filter: "drop-shadow(0 0 28px rgba(234, 179, 8, 0.55)) drop-shadow(0 0 8px rgba(255,255,255,0.15))",
+                width: "clamp(84px, 12vw, 150px)",
+                height: "clamp(84px, 12vw, 150px)",
+                objectFit: "contain",
+                filter: "drop-shadow(0 0 28px rgba(234, 179, 8, 0.55)) drop-shadow(0 0 12px rgba(255,255,255,0.2))",
                 userSelect: "none",
               }}
             />

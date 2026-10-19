@@ -10,6 +10,7 @@ export interface Hymn {
   number?: number        // Traditional hymn number (optional)
   title: string
   author?: string
+  category?: string
   stanzas: HymnStanza[]
   createdAt: number
   source: 'builtin' | 'imported'

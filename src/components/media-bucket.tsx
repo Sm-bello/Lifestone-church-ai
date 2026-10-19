@@ -5,7 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { readFile } from "@tauri-apps/plugin-fs"
 import { emit } from "@tauri-apps/api/event"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, Play, Image, Repeat, Volume2, VolumeX } from "lucide-react"
+import { Plus, Trash2, Play, Pause, Image, Repeat, Volume2, VolumeX } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const blobCache = new Map<string, string>()
@@ -65,12 +65,14 @@ export function MediaBucket() {
     isLive,
     mediaPlaybackMode,
     isMediaMuted,
+    isMediaPlaying,
     addToLibrary,
     removeFromLibrary,
     setCurrentMedia,
     setLive,
     setMediaPlaybackMode,
     toggleMediaMute,
+    setMediaPlaying,
   } = useBroadcastStore()
 
   const playbackMode = currentMedia?.playbackMode ?? mediaPlaybackMode ?? "loop"
@@ -130,7 +132,7 @@ export function MediaBucket() {
         const url = blobUrls.get(currentMedia.id) || currentMedia.assetUrl
         await emit("broadcast:media-update", {
           media: { ...currentMedia, assetUrl: url, playbackMode: activePlaybackMode, isMuted: activeMuted },
-          isPlaying: true,
+          isPlaying: isMediaPlaying,
           playbackMode: activePlaybackMode,
           isMuted: activeMuted,
         })
@@ -138,7 +140,7 @@ export function MediaBucket() {
     }
 
     sendMedia()
-  }, [currentMedia, isLive, blobUrls, mediaPlaybackMode, isMediaMuted])
+  }, [currentMedia, isLive, blobUrls, mediaPlaybackMode, isMediaMuted, isMediaPlaying])
 
   const handleAdd = async () => {
     const selected = await open({
@@ -199,35 +201,62 @@ export function MediaBucket() {
 
       {/* Media Playback & Audio Controls Bar */}
       <div className="flex items-center justify-between px-3 py-2 border-b shrink-0 bg-muted/20">
-        {/* Playback mode toggle */}
-        <div className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 p-0.5 text-xs">
+        <div className="flex items-center gap-1.5">
+          {/* Playback mode toggle */}
+          <div className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setMediaPlaybackMode("loop")}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors",
+                playbackMode === "loop"
+                  ? "bg-primary/15 text-primary font-semibold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Loop video continuously"
+            >
+              <Repeat className="w-3.5 h-3.5" />
+              <span>Loop</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMediaPlaybackMode("play-once")}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors",
+                playbackMode === "play-once"
+                  ? "bg-primary/15 text-primary font-semibold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Play video once and pause"
+            >
+              <Play className="w-3.5 h-3.5" />
+              <span>Once</span>
+            </button>
+          </div>
+
+          {/* Video Play / Pause button */}
           <button
             type="button"
-            onClick={() => setMediaPlaybackMode("loop")}
+            onClick={() => setMediaPlaying(!isMediaPlaying)}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
-              playbackMode === "loop"
-                ? "bg-primary/15 text-primary font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+              "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
+              isMediaPlaying
+                ? "text-emerald-500 border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25"
+                : "text-amber-500 border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25"
             )}
-            title="Loop video continuously"
+            title={isMediaPlaying ? "Pause video playback" : "Resume video playback"}
           >
-            <Repeat className="w-3.5 h-3.5" />
-            <span>Loop</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMediaPlaybackMode("play-once")}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
-              playbackMode === "play-once"
-                ? "bg-primary/15 text-primary font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+            {isMediaPlaying ? (
+              <>
+                <Pause className="w-3.5 h-3.5" />
+                <span>Play</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5" />
+                <span>Pause</span>
+              </>
             )}
-            title="Play video once"
-          >
-            <Play className="w-3.5 h-3.5" />
-            <span>Once</span>
           </button>
         </div>
 
@@ -294,7 +323,8 @@ export function MediaBucket() {
                       setCurrentMedia(null)
                     } else {
                       setLive(true)
-                      setCurrentMedia(item)
+                      const itemWithUrl = { ...item, assetUrl: blobUrls.get(item.id) || item.assetUrl }
+                      setCurrentMedia(itemWithUrl)
                     }
                   }}
                   onMouseEnter={() => setHoveredId(item.id)}
