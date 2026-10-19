@@ -107,10 +107,13 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     const timeoutId = setTimeout(() => controller.abort(), 6000)
 
     try {
-      const response = await fetch(GITHUB_API_LATEST, {
+      const url = `${GITHUB_API_LATEST}?_t=${Date.now()}`
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           Accept: "application/vnd.github.v3+json",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
         },
         cache: "no-store",
       })
