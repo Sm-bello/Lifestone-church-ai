@@ -165,3 +165,23 @@
 #react-joyride-portal .react-joyride__spotlight {
   transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
 }
+
+/* Smooth, always-draggable, modern custom scrollbar */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+.custom-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}

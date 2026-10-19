@@ -13,7 +13,6 @@ import { useHymnStore } from "@/stores"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -176,11 +175,11 @@ export function HymnConsole() {
           </div>
         </div>
 
-        {/* ── Two-Column Main Area ── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Left Column: Hymn List (~35%) */}
-          <div className="w-[35%] shrink-0 border-r border-border flex flex-col min-h-0 bg-background/40">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-muted/20">
+        {/* ── Two-Column Main Area (Horizontally scrollable if screen is narrow, never squished) ── */}
+        <div className="flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden custom-scroll">
+          {/* Left Column: Hymn List (Comfortable width, smooth vertical scroll for all 260 hymns) */}
+          <div className="w-[36%] min-w-[310px] max-w-[420px] shrink-0 border-r border-border flex flex-col min-h-0 bg-background/40">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-muted/20 shrink-0">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Songs ({filteredHymns.length})
               </span>
@@ -191,13 +190,13 @@ export function HymnConsole() {
               )}
             </div>
 
-            <ScrollArea className="flex-1 p-2.5">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2.5 custom-scroll focus:outline-none">
               {filteredHymns.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
                   No songs found matching &ldquo;{searchQuery}&rdquo;
                 </div>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 pb-8">
                   {filteredHymns.map((hymn) => {
                     const isSelected = selectedHymnId === hymn.id
                     return (
@@ -205,20 +204,20 @@ export function HymnConsole() {
                         key={hymn.id}
                         onClick={() => selectHymn(hymn.id)}
                         className={cn(
-                          "group relative flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition-all text-left",
+                          "group relative flex flex-col gap-1 p-2.5 rounded-lg border cursor-pointer transition-all text-left",
                           isSelected
                             ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
                             : "border-transparent hover:border-border hover:bg-muted/50"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             {hymn.number && (
                               <span className="font-mono text-xs font-bold text-primary shrink-0">
                                 #{hymn.number}
                               </span>
                             )}
-                            <span className="font-semibold text-sm text-foreground truncate">
+                            <span className="font-semibold text-sm text-foreground truncate" title={hymn.title}>
                               {hymn.title}
                             </span>
                           </div>
@@ -227,7 +226,7 @@ export function HymnConsole() {
                             <Badge
                               variant={hymn.source === "builtin" ? "secondary" : "outline"}
                               className={cn(
-                                "text-[10px] uppercase font-mono px-1.5 py-0 h-4.5",
+                                "text-[10px] uppercase font-mono px-1.5 py-0 h-4.5 shrink-0",
                                 hymn.source === "imported" &&
                                   "border-primary/40 text-primary"
                               )}
@@ -241,7 +240,7 @@ export function HymnConsole() {
                                   e.stopPropagation()
                                   removeHymn(hymn.id)
                                 }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-destructive rounded"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-destructive rounded shrink-0"
                                 title="Delete song"
                               >
                                 <Trash2Icon className="size-3.5" />
@@ -250,11 +249,11 @@ export function HymnConsole() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="truncate max-w-[200px] capitalize">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground min-w-0 mt-0.5">
+                          <span className="truncate max-w-[170px] sm:max-w-[200px] capitalize text-[11px]" title={hymn.category || hymn.author}>
                             {hymn.category || hymn.author || "Gospel Hymns"}
                           </span>
-                          <span className="shrink-0 text-[11px]">
+                          <span className="shrink-0 text-[11px] text-muted-foreground/80 pl-2">
                             {hymn.stanzas.length} stanzas
                           </span>
                         </div>
@@ -263,11 +262,11 @@ export function HymnConsole() {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
 
-          {/* Right Column: Stanza Cards (~65%) */}
-          <div className="flex-1 flex flex-col min-h-0 bg-background/20 overflow-hidden">
+          {/* Right Column: Stanza Cards (Spacious, smooth vertical scroll through all verses) */}
+          <div className="flex-1 min-w-[440px] flex flex-col min-h-0 bg-background/20 overflow-hidden">
             {!selectedHymn ? (
               <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
                 <div className="size-16 rounded-full bg-muted/40 flex items-center justify-center mb-4 border border-border">
@@ -284,26 +283,26 @@ export function HymnConsole() {
             ) : (
               <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
                 {/* Header of selected hymn */}
-                <div className="flex items-center justify-between border-b border-border px-6 py-3.5 bg-card/60">
+                <div className="flex items-center justify-between border-b border-border px-6 py-3.5 bg-card/60 shrink-0">
                   <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       {selectedHymn.number && (
-                        <span className="text-primary font-mono font-bold text-base">
+                        <span className="text-primary font-mono font-bold text-base shrink-0">
                           #{selectedHymn.number}
                         </span>
                       )}
-                      <h2 className="text-lg font-bold text-foreground truncate">
+                      <h2 className="text-lg font-bold text-foreground truncate" title={selectedHymn.title}>
                         {selectedHymn.title}
                       </h2>
                       <Badge
                         variant={selectedHymn.source === "builtin" ? "secondary" : "outline"}
-                        className="text-[10px] uppercase font-mono"
+                        className="text-[10px] uppercase font-mono shrink-0"
                       >
                         {selectedHymn.source}
                       </Badge>
                     </div>
                     {selectedHymn.author && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         Author: {selectedHymn.author}
                       </p>
                     )}
@@ -314,7 +313,7 @@ export function HymnConsole() {
                       variant="outline"
                       size="sm"
                       onClick={stopPresenting}
-                      className="border-destructive/40 text-destructive hover:bg-destructive/10 gap-1.5 h-8 font-medium"
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10 gap-1.5 h-8 font-medium shrink-0 ml-4"
                     >
                       <SquareIcon className="size-3.5 fill-current" />
                       <span>Stop Presenting</span>
@@ -322,9 +321,9 @@ export function HymnConsole() {
                   )}
                 </div>
 
-                {/* Stanzas grid */}
-                <ScrollArea className="flex-1 p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
+                {/* Stanzas grid: smooth scrolling with complete accessibility to all stanzas */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 custom-scroll focus:outline-none">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-16">
                     {selectedHymn.stanzas.map((stanza) => {
                       const isPresenting = activeStanzaId === stanza.id
                       return (
@@ -365,7 +364,7 @@ export function HymnConsole() {
                           </div>
 
                           {/* Stanza lyrics */}
-                          <div className="space-y-1.5 text-sm md:text-base leading-relaxed text-foreground/90 font-medium">
+                          <div className="space-y-1.5 text-sm md:text-base leading-relaxed text-foreground/90 font-medium break-words">
                             {stanza.lines.map((line, idx) => (
                               <p key={idx} className="whitespace-pre-wrap">
                                 {line}
@@ -382,7 +381,7 @@ export function HymnConsole() {
                       )
                     })}
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             )}
           </div>
