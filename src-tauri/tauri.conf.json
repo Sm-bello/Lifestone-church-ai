@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
   "version": "1.0.9",
-  "identifier": "com.openbezal.lifestone",
+  "identifier": "com.lifestone.church",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:5173",
@@ -39,6 +39,9 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "Lifestone Church AI",
+    "copyright": "Copyright © Lifestone Church AI",
+    "homepage": "https://lifestone-church-ai.vercel.app",
     "targets": [
       "nsis",
       "msi",
