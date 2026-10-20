@@ -5,6 +5,80 @@ mod state;
 
 use std::sync::Mutex;
 
+#[tauri::command]
+#[expect(clippy::needless_pass_by_value, reason = "tauri command requires owned String")]
+fn open_external_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("Only http/https URLs are allowed".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+        let mut chrome_paths = vec![
+            std::path::PathBuf::from(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
+            std::path::PathBuf::from(
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            ),
+        ];
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            chrome_paths.push(
+                std::path::PathBuf::from(local_app_data)
+                    .join(r"Google\Chrome\Application\chrome.exe"),
+            );
+        }
+
+        for chrome in chrome_paths {
+            if chrome.exists()
+                && std::process::Command::new(&chrome)
+                    .arg(&url)
+                    .spawn()
+                    .is_ok()
+            {
+                return Ok(());
+            }
+        }
+
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if !std::process::Command::new("open")
+            .args(["-a", "Google Chrome", &url])
+            .status()
+            .is_ok_and(|s| s.success())
+        {
+            std::process::Command::new("open")
+                .arg(&url)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if std::process::Command::new("google-chrome")
+            .arg(&url)
+            .spawn()
+            .is_err()
+        {
+            std::process::Command::new("xdg-open")
+                .arg(&url)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
 #[expect(clippy::too_many_lines, reason = "app setup is inherently complex")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -63,6 +137,7 @@ pub fn run() {
             commands::remote::stop_http,
             commands::remote::get_http_status,
             commands::remote::update_remote_status,
+            open_external_url,
         ])
         .setup(|app| {
             use tauri::Manager;

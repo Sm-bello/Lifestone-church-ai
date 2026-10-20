@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { openUrl } from "@tauri-apps/plugin-opener"
+import { openExternalUrl } from "@/lib/open-external"
 import {
   SparklesIcon,
   CheckCircle2Icon,
@@ -33,12 +33,7 @@ export function UpdateDialog() {
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const handleOpenRelease = async () => {
-    const url = "https://lifestone-church-ai.vercel.app"
-    try {
-      await openUrl(url)
-    } catch {
-      window.open(url, "_blank")
-    }
+    await openExternalUrl("https://lifestone-church-ai.vercel.app")
   }
 
   const handleManualCheck = async () => {

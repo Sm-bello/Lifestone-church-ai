@@ -1,5 +1,5 @@
 import React from "react"
-import { openUrl } from "@tauri-apps/plugin-opener"
+import { openExternalUrl } from "@/lib/open-external"
 import {
   parseMarkdownBlocks,
   parseInline,
@@ -21,11 +21,7 @@ export function ReleaseNotesView({ notes, className }: ReleaseNotesViewProps) {
   }
 
   const handleOpenLink = async (url: string) => {
-    try {
-      await openUrl(url)
-    } catch {
-      window.open(url, "_blank")
-    }
+    await openExternalUrl(url)
   }
 
   const blocks = parseMarkdownBlocks(notes)
