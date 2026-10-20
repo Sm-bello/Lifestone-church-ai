@@ -159,26 +159,26 @@ export function parseMarkdownBlocks(markdown: string): Block[] {
     }
 
     // Headers
-    if (rawLine.startsWith("# ")) {
-      blocks.push({ type: "h1", content: rawLine.slice(2).trim() })
+    if (trimmed.startsWith("# ")) {
+      blocks.push({ type: "h1", content: trimmed.slice(2).trim() })
       continue
     }
-    if (rawLine.startsWith("## ")) {
-      blocks.push({ type: "h2", content: rawLine.slice(3).trim() })
+    if (trimmed.startsWith("## ")) {
+      blocks.push({ type: "h2", content: trimmed.slice(3).trim() })
       continue
     }
-    if (rawLine.startsWith("### ")) {
-      blocks.push({ type: "h3", content: rawLine.slice(4).trim() })
+    if (trimmed.startsWith("### ")) {
+      blocks.push({ type: "h3", content: trimmed.slice(4).trim() })
       continue
     }
-    if (rawLine.startsWith("#### ")) {
-      blocks.push({ type: "h4", content: rawLine.slice(5).trim() })
+    if (trimmed.startsWith("#### ")) {
+      blocks.push({ type: "h4", content: trimmed.slice(5).trim() })
       continue
     }
 
     // Blockquote
-    if (rawLine.startsWith("> ")) {
-      blocks.push({ type: "blockquote", content: rawLine.slice(2).trim() })
+    if (trimmed.startsWith("> ")) {
+      blocks.push({ type: "blockquote", content: trimmed.slice(2).trim() })
       continue
     }
 
