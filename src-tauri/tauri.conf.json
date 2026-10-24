@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "identifier": "com.lifestone.church",
   "build": {
     "frontendDist": "../build",
@@ -68,6 +68,10 @@
       "timestampUrl": "",
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser"
       }
     },
     "macOS": {
