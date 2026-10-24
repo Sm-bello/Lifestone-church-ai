@@ -11,11 +11,8 @@ use lifestone_bible::{Book, CrossReference, Translation, Verse};
 pub fn list_translations(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<Translation>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.list_translations().map_err(|e| e.to_string())
 }
 
@@ -24,11 +21,8 @@ pub fn list_books(
     state: State<'_, Mutex<AppState>>,
     translation_id: i64,
 ) -> Result<Vec<Book>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.list_books(translation_id).map_err(|e| e.to_string())
 }
 
@@ -39,11 +33,8 @@ pub fn get_chapter(
     book_number: i32,
     chapter: i32,
 ) -> Result<Vec<Verse>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.get_chapter(translation_id, book_number, chapter)
         .map_err(|e| e.to_string())
 }
@@ -56,11 +47,8 @@ pub fn get_verse(
     chapter: i32,
     verse: i32,
 ) -> Result<Option<Verse>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.get_verse(translation_id, book_number, chapter, verse)
         .map_err(|e| e.to_string())
 }
@@ -72,11 +60,8 @@ pub fn search_verses(
     translation_id: i64,
     limit: usize,
 ) -> Result<Vec<Verse>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.search_verses(&query, translation_id, limit)
         .map_err(|e| e.to_string())
 }
@@ -88,11 +73,8 @@ pub fn get_cross_references(
     chapter: i32,
     verse: i32,
 ) -> Result<Vec<CrossReference>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
     db.get_cross_references(book_number, chapter, verse)
         .map_err(|e| e.to_string())
 }
@@ -113,8 +95,8 @@ pub fn set_active_translation(
     translation_id: i64,
 ) -> Result<i64, String> {
     let mut app_state = state.lock().map_err(|e| e.to_string())?;
-    // Verify the translation exists
-    if let Some(ref db) = app_state.bible_db {
+    // Verify the translation exists if database is loaded
+    if let Ok(db) = app_state.get_or_load_bible_db() {
         let translations = db.list_translations().map_err(|e| e.to_string())?;
         if !translations.iter().any(|t| t.id == translation_id) {
             return Err(format!("Translation ID {translation_id} not found"));
@@ -123,6 +105,18 @@ pub fn set_active_translation(
     app_state.active_translation_id = translation_id;
     log::info!("[BIBLE] Active translation set to ID {translation_id}");
     Ok(translation_id)
+}
+
+/// Force a reload of the Bible database from disk
+#[tauri::command]
+pub fn reload_bible_db(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<bool, String> {
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    app_state.bible_db = None;
+    let _ = app_state.get_or_load_bible_db()?;
+    log::info!("[BIBLE] Bible database reloaded successfully");
+    Ok(true)
 }
 
 #[derive(Serialize)]
@@ -139,11 +133,8 @@ pub fn get_translation_verses_for_search(
     state: State<'_, Mutex<AppState>>,
     translation_id: i64,
 ) -> Result<Vec<VerseSearchRow>, String> {
-    let app_state = state.lock().map_err(|e| e.to_string())?;
-    let db = app_state
-        .bible_db
-        .as_ref()
-        .ok_or_else(|| "Bible database not loaded".to_string())?;
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    let db = app_state.get_or_load_bible_db()?;
 
     db.load_translation_verses_for_search(translation_id)
         .map(|rows| {

@@ -21,6 +21,8 @@ import {
   CheckIcon,
   PlusIcon,
   ChevronRightIcon,
+  Loader2Icon,
+  RefreshCwIcon,
 } from "lucide-react"
 import {
   Tooltip,
@@ -110,16 +112,33 @@ export function SearchPanel() {
 
   const selectedBookNumber = selectedBook?.book_number
 
-  useEffect(() => {
-    bibleActions.loadTranslations().catch(console.error)
-    bibleActions.loadBooks().then(() => {
-      useBibleStore.getState().setPendingNavigation({
-        bookNumber: 1,
-        chapter: 1,
-        verse: 1,
-      })
-    }).catch(console.error)
+  const [initError, setInitError] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(false)
+
+  const handleInitialize = useCallback(async () => {
+    setIsInitializing(true)
+    setInitError(false)
+    try {
+      const ok = await bibleActions.initializeBible(4, 300)
+      if (ok) {
+        useBibleStore.getState().setPendingNavigation({
+          bookNumber: 1,
+          chapter: 1,
+          verse: 1,
+        })
+      } else {
+        setInitError(true)
+      }
+    } catch {
+      setInitError(true)
+    } finally {
+      setIsInitializing(false)
+    }
   }, [])
+
+  useEffect(() => {
+    void handleInitialize()
+  }, [handleInitialize])
 
   useEffect(() => {
     if (selectedBookNumber && chapter >= 1) {
@@ -157,6 +176,16 @@ export function SearchPanel() {
     },
     []
   )
+
+  // Auto-default: if books are loaded but selectedBook is still null, default to Genesis (or first book)
+  useEffect(() => {
+    if (!selectedBook && books.length > 0) {
+      const firstBook = books.find((b) => b.book_number === 1) ?? books[0]
+      if (firstBook) {
+        applyNavigationSelection(firstBook, 1)
+      }
+    }
+  }, [selectedBook, books, applyNavigationSelection])
 
   useEffect(() => {
     let lastHandledKey: string | null = null
@@ -566,6 +595,7 @@ export function SearchPanel() {
 
             <Select
               value={String(activeTranslationId)}
+              disabled={translations.length === 0}
               onValueChange={async (v) => {
                 const id = Number(v)
                 try {
@@ -575,7 +605,7 @@ export function SearchPanel() {
               }}
             >
               <SelectTrigger size="sm" className="h-7 w-[72px] shrink-0 text-xs">
-                <SelectValue />
+                <SelectValue placeholder={translations.length === 0 ? "..." : undefined} />
               </SelectTrigger>
               <SelectContent>
                 {translations.map((t) => (
@@ -596,6 +626,7 @@ export function SearchPanel() {
             />
             <Select
               value={String(activeTranslationId)}
+              disabled={translations.length === 0}
               onValueChange={async (v) => {
                 const id = Number(v)
                 try {
@@ -605,7 +636,7 @@ export function SearchPanel() {
               }}
             >
               <SelectTrigger size="sm" className="h-7 w-[72px] shrink-0 text-xs">
-                <SelectValue />
+                <SelectValue placeholder={translations.length === 0 ? "..." : undefined} />
               </SelectTrigger>
               <SelectContent>
                 {translations.map((t) => (
@@ -764,106 +795,142 @@ export function SearchPanel() {
 
           {/* SCROLLABLE: Verse list — only THIS scrolls */}
           <div className="relative flex flex-col min-h-0 flex-1">
-            <ScrollArea
-              key={`book-${selectedBookNumber}-${chapter}`}
-              ref={bookScrollRef}
-              className="h-full"
-            >
-              <div className="flex flex-col gap-0 p-2">
-                {currentChapter.map((verse) => (
-                  <div
-                    key={verse.id}
-                    id={`verse-${verse.id}`}
-                    onClick={() => handleVerseClick(verse)}
-                    onDoubleClick={() => handleVerseDoubleClick(verse)}
-                    className={cn(
-                      "group flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors",
-                      verse.id === effectiveSelectedVerseId
-                        ? "border border-lime-500/50 bg-lime-500/10"
-                        : "border border-transparent hover:bg-muted/50"
-                    )}
-                  >
-                    <span className="w-6 shrink-0 text-right text-sm font-semibold text-primary">
-                      {verse.verse}
-                    </span>
-                    <p className="flex-1 text-sm leading-relaxed text-foreground/80">
-                      {verse.text}
+            {translations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center gap-3 text-muted-foreground flex-1 my-auto">
+                {isInitializing ? (
+                  <>
+                    <Loader2Icon className="size-8 animate-spin text-primary" />
+                    <p className="text-sm font-medium text-foreground">Loading Scripture Database...</p>
+                    <p className="text-xs text-muted-foreground max-w-xs">
+                      Connecting to local Bible translations. This will take just a moment.
                     </p>
-                    {queuedVerseKeys.has(`${verse.book_number}:${verse.chapter}:${verse.verse}`) ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span
-                              className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                const store = useQueueStore.getState()
-                                const idx = store.findDuplicate(verse.book_number, verse.chapter, verse.verse)
-                                if (idx !== -1) {
-                                  store.flashItem(store.items[idx].id)
-                                  document.querySelector(`[data-slot="queue-panel"] [data-queue-idx="${idx}"]`)
-                                    ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-                                }
-                              }}
-                            >
-                              <CheckIcon className="size-4 text-ai-direct" />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">Already in queue</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className={cn(
-                                "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
-                                verse.id === effectiveSelectedVerseId
-                                  ? "hover:bg-lime-500/20 hover:text-lime-500"
-                                  : "bg-primary/40! text-primary-foreground hover:bg-primary!"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                useQueueStore.getState().addItem({
-                                  id: crypto.randomUUID(),
-                                  verse,
-                                  reference: `${verse.book_name} ${verse.chapter}:${verse.verse}`,
-                                  confidence: 1,
-                                  source: "manual",
-                                  added_at: Date.now(),
-                                })
-                              }}
-                            >
-                              <PlusIcon className="size-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">Add to queue</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                ))}
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-amber-500/10 p-3 text-amber-500">
+                      <BookOpenIcon className="size-7" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Scripture Database Offline</p>
+                    <p className="text-xs text-muted-foreground max-w-xs">
+                      The Bible database could not be loaded on startup.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void handleInitialize()}
+                      disabled={isInitializing}
+                      className="gap-2 text-xs mt-1"
+                    >
+                      <RefreshCwIcon className={cn("size-3.5", isInitializing && "animate-spin")} />
+                      Reconnect Bible Database
+                    </Button>
+                  </>
+                )}
               </div>
-            </ScrollArea>
+            ) : (
+              <>
+                <ScrollArea
+                  key={`book-${selectedBookNumber}-${chapter}`}
+                  ref={bookScrollRef}
+                  className="h-full"
+                >
+                  <div className="flex flex-col gap-0 p-2">
+                    {currentChapter.map((verse) => (
+                      <div
+                        key={verse.id}
+                        id={`verse-${verse.id}`}
+                        onClick={() => handleVerseClick(verse)}
+                        onDoubleClick={() => handleVerseDoubleClick(verse)}
+                        className={cn(
+                          "group flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors",
+                          verse.id === effectiveSelectedVerseId
+                            ? "border border-lime-500/50 bg-lime-500/10"
+                            : "border border-transparent hover:bg-muted/50"
+                        )}
+                      >
+                        <span className="w-6 shrink-0 text-right text-sm font-semibold text-primary">
+                          {verse.verse}
+                        </span>
+                        <p className="flex-1 text-sm leading-relaxed text-foreground/80">
+                          {verse.text}
+                        </p>
+                        {queuedVerseKeys.has(`${verse.book_number}:${verse.chapter}:${verse.verse}`) ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    const store = useQueueStore.getState()
+                                    const idx = store.findDuplicate(verse.book_number, verse.chapter, verse.verse)
+                                    if (idx !== -1) {
+                                      store.flashItem(store.items[idx].id)
+                                      document.querySelector(`[data-slot="queue-panel"] [data-queue-idx="${idx}"]`)
+                                        ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                                    }
+                                  }}
+                                >
+                                  <CheckIcon className="size-4 text-ai-direct" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Already in queue</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className={cn(
+                                    "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
+                                    verse.id === effectiveSelectedVerseId
+                                      ? "hover:bg-lime-500/20 hover:text-lime-500"
+                                      : "bg-primary/40! text-primary-foreground hover:bg-primary!"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    useQueueStore.getState().addItem({
+                                      id: crypto.randomUUID(),
+                                      verse,
+                                      reference: `${verse.book_name} ${verse.chapter}:${verse.verse}`,
+                                      confidence: 1,
+                                      source: "manual",
+                                      added_at: Date.now(),
+                                    })
+                                  }}
+                                >
+                                  <PlusIcon className="size-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Add to queue</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
 
-            {/* Floating "Back to top" button */}
-            {showScrollTop && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute bottom-3 right-3 z-50 h-8 shadow-lg border border-border/50 bg-background/90 backdrop-blur-sm hover:bg-background"
-                onClick={() => {
-                  const viewport = getViewport(bookScrollRef)
-                  if (viewport) viewport.scrollTop = 0
-                  setShowScrollTop(false)
-                }}
-              >
-                <ArrowUpIcon className="size-3.5 mr-1" />
-                Top
-              </Button>
+                {/* Floating "Back to top" button */}
+                {showScrollTop && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="absolute bottom-3 right-3 z-50 h-8 shadow-lg border border-border/50 bg-background/90 backdrop-blur-sm hover:bg-background"
+                    onClick={() => {
+                      const viewport = getViewport(bookScrollRef)
+                      if (viewport) viewport.scrollTop = 0
+                      setShowScrollTop(false)
+                    }}
+                  >
+                    <ArrowUpIcon className="size-3.5 mr-1" />
+                    Top
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </>

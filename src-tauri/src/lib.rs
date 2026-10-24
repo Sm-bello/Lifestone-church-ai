@@ -110,6 +110,7 @@ pub fn run() {
             commands::bible::get_cross_references,
             commands::bible::get_active_translation,
             commands::bible::set_active_translation,
+            commands::bible::reload_bible_db,
             commands::detection::detect_verses,
             commands::detection::detection_status,
             commands::detection::semantic_search,
@@ -147,25 +148,39 @@ pub fn run() {
             let db_path = app
                 .path()
                 .resource_dir()
-                .map(|p| p.join("lifestone.db"))
                 .ok()
-                .filter(|p| p.exists())
-                .unwrap_or_else(|| {
-                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("../data/lifestone.db")
-                });
+                .and_then(|p| {
+                    let direct = p.join("lifestone.db");
+                    if direct.is_file() {
+                        return Some(direct);
+                    }
+                    let up_data = p.join("_up_").join("data").join("lifestone.db");
+                    if up_data.is_file() {
+                        return Some(up_data);
+                    }
+                    let data = p.join("data").join("lifestone.db");
+                    if data.is_file() {
+                        return Some(data);
+                    }
+                    None
+                })
+                .or_else(state::find_bible_db_fallback);
 
-            if db_path.exists() {
-                let bible_db = lifestone_bible::BibleDb::open(&db_path)
-                    .expect("Failed to open Bible database");
-
-                let managed_state = app.state::<Mutex<state::AppState>>();
-                let mut state = managed_state.lock().unwrap();
-                state.bible_db = Some(bible_db);
-                drop(state);
-                log::info!("Bible database loaded from {}", db_path.display());
+            if let Some(path) = db_path {
+                match lifestone_bible::BibleDb::open(&path) {
+                    Ok(bible_db) => {
+                        let managed_state = app.state::<Mutex<state::AppState>>();
+                        let mut state = managed_state.lock().unwrap();
+                        state.bible_db = Some(bible_db);
+                        drop(state);
+                        log::info!("Bible database loaded successfully from {}", path.display());
+                    }
+                    Err(e) => {
+                        log::error!("Failed to open Bible database at {}: {e}", path.display());
+                    }
+                }
             } else {
-                log::warn!("Bible database not found at {}", db_path.display());
+                log::warn!("Bible database not found in resource dir or fallback paths");
             }
 
             let base_dir = app

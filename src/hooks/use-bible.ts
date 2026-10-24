@@ -87,6 +87,47 @@ async function loadCrossReferences(
   return refs
 }
 
+async function reloadBibleDb(): Promise<boolean> {
+  try {
+    await invoke("reload_bible_db")
+    return true
+  } catch (err) {
+    console.error("[Bible] reload_bible_db failed:", err)
+    return false
+  }
+}
+
+/**
+ * Robust initializer for Scripture database.
+ * Sequentially loads translations, verifies active translation, loads books,
+ * with automatic retries and backend reconnection if needed.
+ */
+async function initializeBible(retries = 3, delayMs = 300): Promise<boolean> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const translations = await loadTranslations()
+      if (!translations || translations.length === 0) {
+        throw new Error("No translations returned from database")
+      }
+      const activeId = useBibleStore.getState().activeTranslationId || translations[0]?.id || 1
+      const books = await loadBooks(activeId)
+      if (!books || books.length === 0) {
+        throw new Error("No books returned for active translation")
+      }
+      return true
+    } catch (err) {
+      console.warn(`[Bible] Initialization attempt ${attempt}/${retries} failed:`, err)
+      if (attempt < retries) {
+        if (attempt === 1) {
+          await reloadBibleDb().catch(() => {})
+        }
+        await new Promise((r) => setTimeout(r, delayMs * attempt))
+      }
+    }
+  }
+  return false
+}
+
 // Exported stable references — these never change between renders
 export const bibleActions = {
   loadTranslations,
@@ -96,6 +137,8 @@ export const bibleActions = {
   searchVerses,
   semanticSearch,
   loadCrossReferences,
+  reloadBibleDb,
+  initializeBible,
   navigateToVerse: (bookNumber: number, chapter: number, verse: number) =>
     useBibleStore
       .getState()
