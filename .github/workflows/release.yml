@@ -42,7 +42,14 @@ jobs:
           mkdir -p models/minilm-onnx/onnx
           
           gh release download v1.0.0-models -p "lifestone.db" -D data/ || echo "Warning: lifestone.db not found in release"
-          gh release download v1.0.0-models -p "ggml-nigerian.bin" -D models/whisper/ || echo "Warning: ggml-nigerian.bin not found"
+          if [ ! -f models/whisper/ggml-base.bin ]; then
+            echo "Downloading ggml-base.bin..."
+            curl -sSL -o models/whisper/ggml-base.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
+          fi
+          if [ ! -f models/whisper/ggml-tiny.bin ]; then
+            echo "Downloading ggml-tiny.bin..."
+            curl -sSL -o models/whisper/ggml-tiny.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+          fi
           gh release download v1.0.0-models -p "model.onnx" -D models/minilm-onnx/onnx/ || echo "Warning: model.onnx not found"
 
       - name: Verify bundled files

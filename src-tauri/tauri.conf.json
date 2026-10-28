@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "identifier": "com.lifestone.church",
   "build": {
     "frontendDist": "../build",
@@ -58,7 +58,8 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../models/whisper/ggml-nigerian.bin",
+      "../models/whisper/ggml-base.bin",
+      "../models/whisper/ggml-tiny.bin",
       "../data/lifestone.db",
       "../models/minilm-onnx/onnx/model.onnx"
     ],

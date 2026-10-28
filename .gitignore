@@ -48,7 +48,7 @@ __pycache__/
 # ML models and embeddings (only keep required production models)
 models/*
 !models/whisper/
-!models/whisper/ggml-nigerian.bin
+models/whisper/*.bin
 !models/minilm-onnx/
 models/minilm-onnx/*
 !models/minilm-onnx/onnx/

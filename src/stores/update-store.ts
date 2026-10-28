@@ -5,7 +5,7 @@ import type { UpdateInfo } from "@/types/update"
 
 const GITHUB_API_LATEST = "https://api.github.com/repos/Sm-bello/Lifestone-church-ai/releases/latest"
 const STORAGE_KEY = "lifestone_latest_update"
-const FALLBACK_VERSION = "1.0.6"
+const FALLBACK_VERSION = "1.1.0"
 
 interface UpdateState {
   currentVersion: string

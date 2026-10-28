@@ -28,7 +28,7 @@ missing_panics_doc = "allow"
 
 [package]
 name = "lifestone"
-version = "0.1.0"
+version = "1.1.0"
 description = "Lifestone - Real-Time AI Bible Verse Detection"
 authors = ["Lifestone Church AI"]
 license = "MIT"

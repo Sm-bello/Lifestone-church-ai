@@ -13,8 +13,9 @@
 import { readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const OUT_DIR = new URL("../out/", import.meta.url).pathname;
+const OUT_DIR = fileURLToPath(new URL("../out/", import.meta.url));
 
 const TARGETS = [
   { route: "opengraph-image" },
@@ -39,6 +40,7 @@ async function renameTargets() {
  * @returns {AsyncGenerator<string>}
  */
 async function* walkHtml(dir) {
+  if (!existsSync(dir)) return;
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) yield* walkHtml(full);

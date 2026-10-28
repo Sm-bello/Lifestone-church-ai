@@ -1,8 +1,12 @@
 //! Local Whisper STT provider using whisper.cpp via whisper-rs.
 //!
 //! Processes audio through VAD to detect speech boundaries, accumulates short
-//! clips across natural pauses, then runs Whisper inference. Emits the same
-//! [`TranscriptEvent`] types as the cloud provider.
+//! clips across natural pauses, then runs Whisper inference.
+//!
+//! Supports Dual-Engine Cascading:
+//! - Sub-second fast command recognition via Whisper Tiny (75 MB) for screen navigation
+//!   ("next", "next verse", "previous verse", "verse 4", "chapter 3")
+//! - High-accuracy continuous transcription via Whisper Base (142 MB) for sermons and Scripture reading.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,15 +28,16 @@ use crate::types::{TranscriptEvent, Word};
 /// Maximum audio buffer before force-flushing (10 seconds at 16 kHz).
 const MAX_BUFFER_SAMPLES: usize = 16_000 * 10;
 
-/// Minimum audio buffer for inference (0.5 seconds).
-/// Whisper small handles 0.5s fine; the "input is too short" warning is non-fatal.
-const MIN_BUFFER_SAMPLES: usize = 16_000 / 2;
+/// Minimum audio buffer for inference (0.25 seconds).
+/// Whisper base & tiny handle 0.25s cleanly.
+const MIN_BUFFER_SAMPLES: usize = 16_000 * 25 / 100;
 
-/// Very short clips below this are permanently discarded as noise (0.15s).
-const SHORT_CLIP_THRESHOLD: usize = 16_000 * 15 / 100;
+/// Very short clips below this are permanently discarded as noise (0.08s).
+const SHORT_CLIP_THRESHOLD: usize = 16_000 * 8 / 100;
 
 /// If a short clip arrives within this window of a previous one, accumulate it.
-const SHORT_CLIP_TIMEOUT_MS: u64 = 3_000;
+/// Tuned to 450ms so voice commands trigger immediately upon pause.
+const SHORT_CLIP_TIMEOUT_MS: u64 = 450;
 
 /// Sample rate expected by Whisper.
 const SAMPLE_RATE: usize = 16_000;
@@ -43,6 +48,88 @@ const SAMPLE_RATE: usize = 16_000;
 
 fn i16_to_f32(samples: &[i16]) -> Vec<f32> {
     samples.iter().map(|&s| f32::from(s) / 32768.0).collect()
+}
+
+/// Check if a transcript matches a screen or reading navigation command.
+fn is_navigation_command(text: &str) -> bool {
+    let lower = text.trim().to_lowercase();
+    let cleaned = lower
+        .trim_matches(|c: char| c.is_ascii_punctuation() || c.is_whitespace());
+
+    if cleaned.is_empty() {
+        return false;
+    }
+
+    // Direct navigation phrases
+    if cleaned == "next"
+        || cleaned == "next verse"
+        || cleaned == "next please"
+        || cleaned == "previous"
+        || cleaned == "previous verse"
+        || cleaned == "go back"
+        || cleaned == "back"
+        || cleaned == "next chapter"
+        || cleaned == "previous chapter"
+        || cleaned == "clear"
+        || cleaned == "clear display"
+        || cleaned == "clear screen"
+    {
+        return true;
+    }
+
+    // Prefix checks for verse/chapter navigation
+    if cleaned.starts_with("verse ")
+        || cleaned.starts_with("verses ")
+        || cleaned.starts_with("chapter ")
+        || cleaned.ends_with(" chapter")
+    {
+        return true;
+    }
+
+    // Single or double spoken numbers (e.g. user just said "five", "twelve")
+    let words: Vec<&str> = cleaned.split_whitespace().collect();
+    if words.len() <= 2 && words.iter().all(|w| is_number_or_digit(w)) {
+        return true;
+    }
+
+    false
+}
+
+fn is_number_or_digit(word: &str) -> bool {
+    if word.chars().all(|c| c.is_ascii_digit()) {
+        return true;
+    }
+    matches!(
+        word,
+        "one"
+            | "two"
+            | "three"
+            | "four"
+            | "five"
+            | "six"
+            | "seven"
+            | "eight"
+            | "nine"
+            | "ten"
+            | "eleven"
+            | "twelve"
+            | "thirteen"
+            | "fourteen"
+            | "fifteen"
+            | "sixteen"
+            | "seventeen"
+            | "eighteen"
+            | "nineteen"
+            | "twenty"
+            | "thirty"
+            | "forty"
+            | "fifty"
+            | "sixty"
+            | "seventy"
+            | "eighty"
+            | "ninety"
+            | "hundred"
+    )
 }
 
 #[expect(
@@ -147,6 +234,7 @@ impl SpeechAccumulator {
 
 pub struct WhisperProvider {
     model_path: PathBuf,
+    fast_model_path: Option<PathBuf>,
     language: Option<String>,
     n_threads: i32,
     cancelled: Arc<AtomicBool>,
@@ -154,8 +242,29 @@ pub struct WhisperProvider {
 
 impl WhisperProvider {
     pub fn new(model_path: PathBuf, language: Option<String>, n_threads: i32) -> Self {
+        let fast_model_path = model_path
+            .parent()
+            .map(|p| p.join("ggml-tiny.bin"))
+            .filter(|p| p.exists() && *p != model_path);
+
         Self {
             model_path,
+            fast_model_path,
+            language,
+            n_threads: n_threads.max(1),
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    pub fn with_fast_model(
+        model_path: PathBuf,
+        fast_model_path: Option<PathBuf>,
+        language: Option<String>,
+        n_threads: i32,
+    ) -> Self {
+        Self {
+            model_path,
+            fast_model_path,
             language,
             n_threads: n_threads.max(1),
             cancelled: Arc::new(AtomicBool::new(false)),
@@ -167,6 +276,7 @@ impl std::fmt::Debug for WhisperProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WhisperProvider")
             .field("model_path", &self.model_path)
+            .field("fast_model_path", &self.fast_model_path)
             .field("language", &self.language)
             .field("n_threads", &self.n_threads)
             .finish_non_exhaustive()
@@ -196,7 +306,7 @@ impl SttProvider for WhisperProvider {
             .unwrap_or(0);
 
         log::info!(
-            "[Whisper] Loading model from: {} (size: {} MB)",
+            "[Whisper] Loading primary model from: {} (size: {} MB)",
             self.model_path.display(),
             model_size_mb
         );
@@ -204,6 +314,7 @@ impl SttProvider for WhisperProvider {
         let _ = event_tx.send(TranscriptEvent::Connected).await;
 
         let model_path = self.model_path.clone();
+        let fast_model_path = self.fast_model_path.clone();
         let language = self.language.clone();
         let n_threads = self.n_threads;
         let cancelled = self.cancelled.clone();
@@ -222,13 +333,13 @@ impl SttProvider for WhisperProvider {
                 use lifestone_audio::{AudioFrame, Vad, VadConfig, VadTransition};
 
                 let vad_config = VadConfig {
-                    silence_threshold: 0.015,
-                    frame_threshold: 0.008,
-                    overall_threshold: 0.08,
-                    silence_frame_count: 25,   // ~1.6s silence to end
-                    min_voice_frames: 10,      // ~0.6s voice to start
-                    max_utterance_frames: 375, // ~24s max
-                    pre_buffer_frames: 6,      // ~0.4s pre-buffer
+                    silence_threshold: 0.012,
+                    frame_threshold: 0.006,
+                    overall_threshold: 0.06,
+                    silence_frame_count: 8,    // ~512ms silence to end utterance (fast command trigger)
+                    min_voice_frames: 3,       // ~192ms voice to start (captures short "Next")
+                    max_utterance_frames: 320, // ~20s max utterance
+                    pre_buffer_frames: 4,      // ~0.25s pre-buffer
                 };
 
                 log::info!(
@@ -243,22 +354,7 @@ impl SttProvider for WhisperProvider {
                 let mut vad = Vad::new(vad_config);
                 let mut audio_buffer: Vec<i16> = Vec::new();
                 let mut pending_short: Option<SpeechAccumulator> = None;
-                let mut frames_seen: u64 = 0;
-
-                let _send_buffer = |buf: Vec<i16>, tx: &mpsc::Sender<Vec<i16>>| {
-                    if buf.len() >= MIN_BUFFER_SAMPLES {
-                        let dur = buf.len() as f64 / SAMPLE_RATE as f64;
-                        log::info!(
-                            "[VAD] Flushing {} samples ({:.2}s) to inference",
-                            buf.len(),
-                            dur
-                        );
-                        let _ = tx.blocking_send(buf);
-                        true
-                    } else {
-                        false
-                    }
-                };
+                let mut _frames_seen: u64 = 0;
 
                 loop {
                     if vad_cancelled.load(Ordering::SeqCst) {
@@ -291,7 +387,7 @@ impl SttProvider for WhisperProvider {
                                     VadTransition::SpeechStarted => {
                                         // If we have a recent short clip, prepend it.
                                         if let Some(ref mut acc) = pending_short {
-                                            if !acc.is_stale() {
+                                             if !acc.is_stale() {
                                                 log::debug!(
                                                     "[VAD] Prepending {} short samples to new speech",
                                                     acc.len()
@@ -323,11 +419,9 @@ impl SttProvider for WhisperProvider {
                                                 .blocking_send(std::mem::take(&mut audio_buffer));
                                             pending_short = None;
                                         } else if audio_buffer.len() >= SHORT_CLIP_THRESHOLD {
-                                            // Too short for inference now, but might be part of a
-                                            // longer phrase. Hold it.
+                                            // Short clip, hold temporarily for timeout flush
                                             log::warn!(
-                                                "[VAD] Holding short clip: {} samples ({:.2}s) \
-                                                 — waiting for more speech",
+                                                "[VAD] Holding short clip: {} samples ({:.2}s) — waiting for more speech",
                                                 audio_buffer.len(),
                                                 dur
                                             );
@@ -351,15 +445,7 @@ impl SttProvider for WhisperProvider {
 
                             for frame in result.frames {
                                 audio_buffer.extend_from_slice(&frame.samples);
-                                frames_seen += 1;
-                            }
-
-                            if frames_seen % 50 == 0 && !audio_buffer.is_empty() {
-                                log::debug!(
-                                    "[VAD] Buffer growing: {} samples ({:.1}s)",
-                                    audio_buffer.len(),
-                                    audio_buffer.len() as f64 / SAMPLE_RATE as f64,
-                                );
+                                _frames_seen += 1;
                             }
 
                             // Force flush if buffer grows too large.
@@ -378,25 +464,17 @@ impl SttProvider for WhisperProvider {
                             }
                         }
                         Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
-                            // If we've been idle and have a pending short clip that's now stale,
-                            // flush it if it meets minimum, otherwise discard.
                             if let Some(ref acc) = pending_short {
                                 if acc.is_stale() {
                                     let buf = pending_short.take().unwrap().take();
                                     if buf.len() >= MIN_BUFFER_SAMPLES {
                                         let dur = buf.len() as f64 / SAMPLE_RATE as f64;
                                         log::info!(
-                                            "[VAD] Stale short clip now meets min: {} samples ({:.2}s)",
+                                            "[VAD] Stale short clip flushed: {} samples ({:.2}s)",
                                             buf.len(),
                                             dur
                                         );
                                         let _ = inference_tx.blocking_send(buf);
-                                    } else {
-                                        log::warn!(
-                                            "[VAD] Stale short clip discarded: {} samples ({:.2}s)",
-                                            buf.len(),
-                                            buf.len() as f64 / SAMPLE_RATE as f64
-                                        );
                                     }
                                     pending_short = None;
                                 }
@@ -415,27 +493,26 @@ impl SttProvider for WhisperProvider {
                     }
                 }
 
-                // Critical: drop the sender so the inference task exits cleanly.
                 drop(inference_tx);
                 log::info!("[VAD] Task exiting");
             }
         });
 
         // ---------------------------------------------------------------------
-        // Task 2: Whisper inference
+        // Task 2: Whisper inference (Cascading Dual-Engine)
         // ---------------------------------------------------------------------
         let inf_cancelled = cancelled.clone();
         let inf_event_tx = event_tx.clone();
         let inf_handle = tokio::task::spawn_blocking(move || {
-            log::info!("[Whisper] Loading GGML from: {}", model_path.display());
+            log::info!("[Whisper] Loading primary model from: {}", model_path.display());
 
-            let ctx = match WhisperContext::new_with_params(
+            let primary_ctx = match WhisperContext::new_with_params(
                 &model_path,
                 WhisperContextParameters::default(),
             ) {
                 Ok(ctx) => ctx,
                 Err(e) => {
-                    log::error!("[Whisper] Failed to load model: {e}");
+                    log::error!("[Whisper] Failed to load primary model: {e}");
                     let _ = inf_event_tx.blocking_send(TranscriptEvent::Error(format!(
                         "Failed to load Whisper model: {e}"
                     )));
@@ -443,10 +520,10 @@ impl SttProvider for WhisperProvider {
                 }
             };
 
-            let mut state = match ctx.create_state() {
+            let mut primary_state = match primary_ctx.create_state() {
                 Ok(s) => s,
                 Err(e) => {
-                    log::error!("[Whisper] Failed to create state: {e}");
+                    log::error!("[Whisper] Failed to create primary state: {e}");
                     let _ = inf_event_tx.blocking_send(TranscriptEvent::Error(format!(
                         "Failed to create Whisper state: {e}"
                     )));
@@ -454,21 +531,40 @@ impl SttProvider for WhisperProvider {
                 }
             };
 
-            log::info!("[Whisper] Model loaded, ready for inference");
+            log::info!("[Whisper] Primary model loaded, ready for inference");
+
+            // Optional fast command coprocessor (Tiny)
+            let mut fast_ctx_and_state = if let Some(ref fast_path) = fast_model_path {
+                if fast_path.exists() {
+                    log::info!("[Whisper Cascade] Loading fast command model from: {}", fast_path.display());
+                    match WhisperContext::new_with_params(fast_path, WhisperContextParameters::default()) {
+                        Ok(ctx) => match ctx.create_state() {
+                            Ok(state) => {
+                                log::info!("[Whisper Cascade] Fast model active (sub-second command recognition armed)");
+                                Some((ctx, state))
+                            }
+                            Err(e) => {
+                                log::warn!("[Whisper Cascade] Could not create state for fast model: {e}");
+                                None
+                            }
+                        },
+                        Err(e) => {
+                            log::warn!("[Whisper Cascade] Could not load fast model: {e}");
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
             let is_nigerian = model_path
                 .file_name()
                 .and_then(|n| n.to_str())
                 .map(|s| s.contains("nigerian") || s.contains("ncair"))
                 .unwrap_or(false);
-
-            if is_nigerian {
-                log::info!(
-                    "[Whisper] NCAIR1 model detected — auto-language + context mode"
-                );
-            } else {
-                log::info!("[Whisper] Standard model — forced English");
-            }
 
             let mut utterance_count: u64 = 0;
 
@@ -482,45 +578,75 @@ impl SttProvider for WhisperProvider {
                 let duration_s = audio_i16.len() as f64 / SAMPLE_RATE as f64;
                 utterance_count += 1;
 
-                let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+                let build_params = |single_segment: bool| -> FullParams {
+                    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+                    if is_nigerian {
+                        params.set_language(None);
+                        params.set_translate(false);
+                        params.set_no_context(false);
+                        params.set_single_segment(true);
+                    } else {
+                        params.set_language(Some(language.as_deref().unwrap_or("en")));
+                        params.set_single_segment(single_segment);
+                    }
+                    params.set_initial_prompt(
+                        "Genesis Exodus Leviticus Numbers Deuteronomy Joshua Judges Ruth \
+                         Samuel Kings Chronicles Ezra Nehemiah Esther Job Psalms Proverbs \
+                         Ecclesiastes Isaiah Jeremiah Lamentations Ezekiel Daniel Hosea Joel \
+                         Amos Obadiah Jonah Micah Nahum Habakkuk Zephaniah Haggai Zechariah \
+                         Malachi Matthew Mark Luke John Acts Romans Corinthians Galatians \
+                         Ephesians Philippians Colossians Thessalonians Timothy Titus Philemon \
+                         Hebrews James Peter Jude Revelation chapter verse verses scripture biblical next previous clear"
+                    );
+                    params.set_n_threads(n_threads);
+                    params.set_print_progress(false);
+                    params.set_print_special(false);
+                    params.set_print_realtime(false);
+                    params.set_token_timestamps(true);
+                    params.set_no_speech_thold(0.3);
+                    params.set_suppress_blank(true);
+                    params.set_suppress_nst(true);
+                    params
+                };
 
-                if is_nigerian {
-                    params.set_language(None);
-                    params.set_translate(false);
-                    params.set_no_context(false);
-                    params.set_single_segment(true);
-                } else {
-                    params.set_language(Some(language.as_deref().unwrap_or("en")));
-                    params.set_single_segment(false);
+                // Fast command cascade: If utterance is short (<= 2.5s) and fast model is armed
+                let mut handled_by_fast = false;
+                if let Some((_, ref mut f_state)) = fast_ctx_and_state {
+                    if duration_s <= 2.5 {
+                        let fast_start = Instant::now();
+                        let fast_params = build_params(true);
+                        if f_state.full(fast_params, &audio_f32).is_ok() {
+                            let (fast_text, fast_words, fast_conf) = extract_segments(f_state);
+                            let fast_elapsed = fast_start.elapsed();
+                            if !fast_text.is_empty() && is_navigation_command(&fast_text) {
+                                log::info!(
+                                    "[Whisper Cascade] Fast model #{utterance_count}: spotted command \"{fast_text}\" in {fast_elapsed:?} ({duration_s:.2}s audio, conf={fast_conf:.2})"
+                                );
+                                let _ = inf_event_tx.blocking_send(TranscriptEvent::Final {
+                                    transcript: fast_text,
+                                    words: fast_words,
+                                    confidence: fast_conf,
+                                    speech_final: true,
+                                });
+                                let _ = inf_event_tx.blocking_send(TranscriptEvent::UtteranceEnd);
+                                handled_by_fast = true;
+                            }
+                        }
+                    }
                 }
 
-                // Tuned for sermon content; make this configurable for non-religious use.
-                params.set_initial_prompt(
-                    "Genesis Exodus Leviticus Numbers Deuteronomy Joshua Judges Ruth \
-                     Samuel Kings Chronicles Ezra Nehemiah Esther Job Psalms Proverbs \
-                     Ecclesiastes Isaiah Jeremiah Lamentations Ezekiel Daniel Hosea Joel \
-                     Amos Obadiah Jonah Micah Nahum Habakkuk Zephaniah Haggai Zechariah \
-                     Malachi Matthew Mark Luke John Acts Romans Corinthians Galatians \
-                     Ephesians Philippians Colossians Thessalonians Timothy Titus Philemon \
-                     Hebrews James Peter Jude Revelation chapter verse verses scripture biblical"
-                );
-
-                params.set_n_threads(n_threads);
-                params.set_print_progress(false);
-                params.set_print_special(false);
-                params.set_print_realtime(false);
-                params.set_token_timestamps(true);
-                params.set_no_speech_thold(0.3); // Was 0.6 — too aggressive for short clips
-                params.set_suppress_blank(true);
-                params.set_suppress_nst(true);
+                if handled_by_fast {
+                    continue;
+                }
 
                 log::info!(
-                    "[Whisper] #{utterance_count}: Running inference on {:.2}s audio...",
+                    "[Whisper] #{utterance_count}: Running primary inference on {:.2}s audio...",
                     duration_s
                 );
 
+                let primary_params = build_params(false);
                 let start = Instant::now();
-                if let Err(e) = state.full(params, &audio_f32) {
+                if let Err(e) = primary_state.full(primary_params, &audio_f32) {
                     log::error!("[Whisper] Inference error: {e}");
                     let _ = inf_event_tx.blocking_send(TranscriptEvent::Error(format!(
                         "Whisper inference error: {e}"
@@ -529,7 +655,7 @@ impl SttProvider for WhisperProvider {
                 }
                 let elapsed = start.elapsed();
 
-                let (text, words, confidence) = extract_segments(&state);
+                let (text, words, confidence) = extract_segments(&primary_state);
 
                 if text.is_empty() {
                     log::warn!(

@@ -60,50 +60,51 @@ pub async fn start_transcription(
         (app_state.stt_active.clone(), app_state.audio_active.clone())
     };
 
-    let _ = model; // Offline speech detection exclusively uses the bundled Nigerian model
     let provider_name = provider.as_deref().unwrap_or("deepgram");
 
     // ── 2. Build the STT provider ───────────────────────────────────────
     let stt_provider: Box<dyn SttProvider> = match provider_name {
         #[cfg(feature = "whisper")]
         "whisper" => {
-            // Resolve bundled Whisper model path.
-            // Dev: {CARGO_MANIFEST_DIR}/../models/whisper/ggml-large-v3-turbo-q8_0.bin
-            // Prod: resource_dir()/models/whisper/ggml-large-v3-turbo-q8_0.bin
-            
-            // Single offline speech model: Nigerian-accented NCAIR1 model
-            let model_filename = "ggml-nigerian.bin";
-            log::info!("[STT] Using offline Nigerian speech model: {model_filename}");
+            // High-Speed Dual-Engine Whisper (Option C):
+            // Primary: ggml-base.bin (~142MB) for continuous sermon Scripture transcription
+            // Fast: ggml-tiny.bin (~75MB) for sub-second voice command screen navigation ("next verse")
+            let resolve_model_path = |filename: &str| -> Option<std::path::PathBuf> {
+                let base_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+                let dev_path = base_dir.join("models").join("whisper").join(filename);
+                if dev_path.exists() {
+                    return Some(dev_path);
+                }
+                let candidates = [
+                    app.path().resource_dir().ok().map(|p| p.join("models").join("whisper").join(filename)),
+                    app.path().resource_dir().ok().map(|p| p.join(filename)),
+                    app.path().resource_dir().ok().map(|p| p.join("_up_").join("models").join("whisper").join(filename)),
+                    std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("models").join("whisper").join(filename))),
+                    std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join(filename))),
+                    std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join("models").join("whisper").join(filename))),
+                    std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join(filename))),
+                ];
+                candidates.into_iter().flatten().find(|p| p.exists())
+            };
 
-            let model_path = {
-                let base_dir =
-                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-                let dev_path = base_dir
+            let primary_filename = if model.as_deref().unwrap_or("").contains("tiny") {
+                "ggml-tiny.bin"
+            } else {
+                "ggml-base.bin"
+            };
+
+            let primary_path = resolve_model_path(primary_filename).unwrap_or_else(|| {
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("..")
                     .join("models")
                     .join("whisper")
-                    .join(model_filename);
-                if dev_path.exists() {
-                    log::info!("[STT] Found model in dev path: {}", dev_path.display());
-                    dev_path
-                } else {
-                    let candidates = [
-                        app.path().resource_dir().ok().map(|p| p.join("models").join("whisper").join(model_filename)),
-                        app.path().resource_dir().ok().map(|p| p.join(model_filename)),
-                        app.path().resource_dir().ok().map(|p| p.join("_up_").join("models").join("whisper").join(model_filename)),
-                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("models").join("whisper").join(model_filename))),
-                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join(model_filename))),
-                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join("models").join("whisper").join(model_filename))),
-                        std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.join("resources").join(model_filename))),
-                    ];
+                    .join(primary_filename)
+            });
 
-                    if let Some(found) = candidates.into_iter().flatten().find(|p| p.exists()) {
-                        log::info!("[STT] Found model in production bundle: {}", found.display());
-                        found
-                    } else {
-                        log::warn!("[STT] Model not found in bundled candidates, falling back to dev path: {}", dev_path.display());
-                        dev_path
-                    }
-                }
+            let fast_path = if primary_filename != "ggml-tiny.bin" {
+                resolve_model_path("ggml-tiny.bin")
+            } else {
+                None
             };
 
             let parallelism = std::thread::available_parallelism()
@@ -111,12 +112,14 @@ pub async fn start_transcription(
             let n_threads = i32::try_from(parallelism).unwrap_or(4).max(1);
 
             log::info!(
-                "Starting Whisper transcription: model={}, threads={n_threads}, device_id={device_id:?}",
-                model_path.display()
+                "Starting Whisper transcription: primary={}, fast={:?}, threads={n_threads}, device_id={device_id:?}",
+                primary_path.display(),
+                fast_path.as_ref().map(|p| p.display().to_string())
             );
 
-            Box::new(lifestone_stt::WhisperProvider::new(
-                model_path,
+            Box::new(lifestone_stt::WhisperProvider::with_fast_model(
+                primary_path,
+                fast_path,
                 None,
                 n_threads,
             ))

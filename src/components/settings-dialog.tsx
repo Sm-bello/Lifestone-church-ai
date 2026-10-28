@@ -249,12 +249,12 @@ function SpeechSection() {
             <RadioGroupItem value="whisper" className="mt-0.5" />
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium text-foreground">
-                Local · Offline (NCAIR1)
+                Local · Offline (Whisper Cascaded AI)
               </span>
               <p className="text-[0.625rem] leading-relaxed text-muted-foreground">
-                Runs the NCAIR1 model locally — fine-tuned for Nigerian-accented
-                English. Fully offline, no API key needed. Audio never leaves
-                your device.
+                High-speed dual-engine Whisper Base (142 MB) + Tiny (75 MB).
+                Instant sub-second screen navigation and continuous offline Scripture
+                speech recognition. 100% offline, zero cloud latency.
               </p>
             </div>
           </label>
@@ -265,16 +265,55 @@ function SpeechSection() {
       {sttProvider === "whisper" && (
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Speech Model
+            Speech Engine Mode
           </label>
-          <div className="flex items-center gap-2 rounded-lg border border-lime-500/30 bg-lime-500/5 px-3 py-2">
-            <span className="text-xs font-medium text-lime-400">NCAIR1</span>
-            <span className="text-xs text-muted-foreground">— Nigerian accent optimized · offline · bundled</span>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                whisperModel === "ggml-base.bin"
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                  : "border-border hover:border-muted-foreground/30 text-foreground"
+              }`}
+              onClick={() => setWhisperModel("ggml-base.bin")}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold">Dual-Engine Cascade (Base 142MB + Tiny 75MB)</span>
+                <span className="text-[0.65rem] text-muted-foreground">
+                  Recommended: Sub-second voice commands ("next verse") + continuous sermon accuracy
+                </span>
+              </div>
+              {whisperModel === "ggml-base.bin" && (
+                <Badge variant="outline" className="border-emerald-500/50 text-[0.6rem] text-emerald-400">
+                  Active
+                </Badge>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                whisperModel === "ggml-tiny.bin"
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                  : "border-border hover:border-muted-foreground/30 text-foreground"
+              }`}
+              onClick={() => setWhisperModel("ggml-tiny.bin")}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold">Whisper Tiny (75MB Standalone)</span>
+                <span className="text-[0.65rem] text-muted-foreground">
+                  Maximum speed on ultra-low-spec CPU laptops
+                </span>
+              </div>
+              {whisperModel === "ggml-tiny.bin" && (
+                <Badge variant="outline" className="border-emerald-500/50 text-[0.6rem] text-emerald-400">
+                  Active
+                </Badge>
+              )}
+            </button>
           </div>
           <p className="text-[0.625rem] text-muted-foreground">
-            NCAIR1 is the only bundled model. It is fine-tuned for Nigerian
-            English and runs fully offline — no internet connection required.
-            Audio never leaves your device.
+            Both models are bundled directly with Lifestone. Zero external network calls or daemons.
           </p>
         </div>
       )}
