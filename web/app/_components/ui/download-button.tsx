@@ -15,38 +15,49 @@ import { Button } from "./button";
 import { usePlatform, type Platform } from "../../_lib/use-platform";
 import { SITE } from "../../_lib/site";
 
+const CURRENT_VERSION = "v1.1.0";
+
 const DEFAULT_URLS: Record<"windows" | "mac" | "linux" | "other", string> = {
   windows:
     "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
-  mac: "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_aarch64.dmg",
+  mac:
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_aarch64.dmg",
   linux:
     "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_amd64.deb",
-  other: "https://github.com/Sm-bello/Lifestone-church-ai/releases/latest",
+  other:
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
 };
 
-const COPY: Record<
-  Platform,
-  { label: string; icon: TablerIcon }
-> = {
-  mac: { label: "Download for macOS (v1.1.0)", icon: IconBrandApple },
-  windows: { label: "Download for Windows (v1.1.0)", icon: IconBrandWindows },
-  linux: { label: "Download for Linux (v1.1.0)", icon: IconDownload },
-  mobile: { label: "Works on PC & Mac", icon: IconDeviceLaptop },
-  other: { label: "Download Lifestone v1.1.0", icon: IconDownload },
-};
+// Singleton promise for GitHub Releases API to avoid redundant network requests across multiple buttons
+let releaseDataPromise: Promise<any> | null = null;
+function fetchLatestReleaseData() {
+  if (!releaseDataPromise) {
+    releaseDataPromise = fetch(
+      `https://api.github.com/repos/${SITE.repo.owner}/${SITE.repo.name}/releases/latest`
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null);
+  }
+  return releaseDataPromise;
+}
+
+export interface DownloadButtonProps {
+  size?: "md" | "lg";
+  className?: string;
+  label?: string;
+  showIcon?: boolean;
+}
 
 export function DownloadButton({
   size = "md",
   className,
-}: {
-  size?: "md" | "lg";
-  className?: string;
-}) {
+  label,
+  showIcon = true,
+}: DownloadButtonProps) {
   const platform = usePlatform();
-  const activePlatform: Platform = platform ?? "other";
-  const copy = COPY[activePlatform] ?? COPY.other;
-  const Icon = copy.icon;
+  const activePlatform: Platform = platform ?? "windows";
 
+  const [version, setVersion] = useState<string>(CURRENT_VERSION);
   const [downloadUrl, setDownloadUrl] = useState<string>(() => {
     if (activePlatform === "windows") return DEFAULT_URLS.windows;
     if (activePlatform === "mac") return DEFAULT_URLS.mac;
@@ -57,56 +68,52 @@ export function DownloadButton({
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Update default URL as soon as platform is resolved on client
+  // Update default URL whenever platform changes
   useEffect(() => {
-    if (platform === "windows") setDownloadUrl(DEFAULT_URLS.windows);
-    else if (platform === "mac") setDownloadUrl(DEFAULT_URLS.mac);
-    else if (platform === "linux") setDownloadUrl(DEFAULT_URLS.linux);
-  }, [platform]);
+    if (activePlatform === "windows") setDownloadUrl(DEFAULT_URLS.windows);
+    else if (activePlatform === "mac") setDownloadUrl(DEFAULT_URLS.mac);
+    else if (activePlatform === "linux") setDownloadUrl(DEFAULT_URLS.linux);
+    else setDownloadUrl(DEFAULT_URLS.other);
+  }, [activePlatform]);
 
-  // Dynamically verify latest asset from GitHub Releases API
+  // Dynamically verify latest asset directly from GitHub Releases API
   useEffect(() => {
     let isCancelled = false;
 
-    async function fetchLatestRelease() {
-      try {
-        const response = await fetch(
-          `https://api.github.com/repos/${SITE.repo.owner}/${SITE.repo.name}/releases/latest`
-        );
-        if (response.ok && !isCancelled) {
-          const data = await response.json();
-          const assets = data.assets || [];
-          let targetAsset = null;
+    if (activePlatform !== "mobile") {
+      fetchLatestReleaseData().then((data) => {
+        if (isCancelled || !data) return;
 
-          if (platform === "windows") {
-            targetAsset =
-              assets.find((a: any) => a.name.endsWith("setup.exe")) ||
-              assets.find((a: any) => a.name.endsWith(".exe"));
-          } else if (platform === "mac") {
-            targetAsset = assets.find((a: any) => a.name.endsWith(".dmg"));
-          } else if (platform === "linux") {
-            targetAsset =
-              assets.find((a: any) => a.name.endsWith(".deb")) ||
-              assets.find((a: any) => a.name.endsWith(".AppImage"));
-          }
-
-          if (targetAsset && targetAsset.browser_download_url) {
-            setDownloadUrl(targetAsset.browser_download_url);
-          }
+        if (data.tag_name) {
+          setVersion(data.tag_name);
         }
-      } catch {
-        // Fallbacks are already hardcoded to v1.1.0 assets
-      }
-    }
 
-    if (platform && platform !== "mobile") {
-      void fetchLatestRelease();
+        const assets = data.assets || [];
+        let targetAsset = null;
+
+        if (activePlatform === "mac") {
+          targetAsset = assets.find((a: any) => a.name?.endsWith(".dmg"));
+        } else if (activePlatform === "linux") {
+          targetAsset =
+            assets.find((a: any) => a.name?.endsWith(".deb")) ||
+            assets.find((a: any) => a.name?.endsWith(".AppImage"));
+        } else {
+          // Windows and desktop fallbacks
+          targetAsset =
+            assets.find((a: any) => a.name?.endsWith("setup.exe")) ||
+            assets.find((a: any) => a.name?.endsWith(".exe"));
+        }
+
+        if (targetAsset && targetAsset.browser_download_url) {
+          setDownloadUrl(targetAsset.browser_download_url);
+        }
+      });
     }
 
     return () => {
       isCancelled = true;
     };
-  }, [platform]);
+  }, [activePlatform]);
 
   // Handle ESC key to close mobile dialog
   useEffect(() => {
@@ -129,6 +136,32 @@ export function DownloadButton({
     }
   };
 
+  const getButtonContent = () => {
+    let Icon: TablerIcon = IconDownload;
+    let defaultLabel = `Download for Windows (${version})`;
+
+    if (activePlatform === "mac") {
+      Icon = IconBrandApple;
+      defaultLabel = `Download for macOS (${version})`;
+    } else if (activePlatform === "windows") {
+      Icon = IconBrandWindows;
+      defaultLabel = `Download for Windows (${version})`;
+    } else if (activePlatform === "linux") {
+      Icon = IconDownload;
+      defaultLabel = `Download for Linux (${version})`;
+    } else if (activePlatform === "mobile") {
+      Icon = IconDeviceLaptop;
+      defaultLabel = "Works on PC & Mac";
+    }
+
+    return {
+      Icon,
+      text: label ?? defaultLabel,
+    };
+  };
+
+  const { Icon, text } = getButtonContent();
+
   if (activePlatform === "mobile") {
     return (
       <>
@@ -138,8 +171,8 @@ export function DownloadButton({
           size={size}
           className={className}
         >
-          <Icon size={16} aria-hidden stroke={2} />
-          <span suppressHydrationWarning>{copy.label}</span>
+          {showIcon && <Icon size={16} aria-hidden stroke={2} />}
+          <span suppressHydrationWarning>{text}</span>
         </Button>
 
         {showMobileModal && (
@@ -171,7 +204,7 @@ export function DownloadButton({
                   <h3 id="mobile-modal-title" className="text-base font-semibold text-foreground">
                     Desktop Church Software
                   </h3>
-                  <p className="text-xs text-accent-gold font-medium">Lifestone v1.1.0 • Windows & macOS</p>
+                  <p className="text-xs text-accent-gold font-medium">Lifestone {version} • Windows & macOS</p>
                 </div>
               </div>
 
@@ -221,12 +254,14 @@ export function DownloadButton({
   return (
     <Button
       href={downloadUrl}
+      target="_self"
+      download=""
       variant="primary"
       size={size}
       className={className}
     >
-      <Icon size={16} aria-hidden stroke={2} />
-      <span suppressHydrationWarning>{copy.label}</span>
+      {showIcon && <Icon size={16} aria-hidden stroke={2} />}
+      <span suppressHydrationWarning>{text}</span>
     </Button>
   );
 }

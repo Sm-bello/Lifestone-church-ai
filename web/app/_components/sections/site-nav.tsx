@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { IconBrandGithub, IconMenu2, IconX } from "@tabler/icons-react";
 import { Button } from "../ui/button";
+import { DownloadButton } from "../ui/download-button";
 import { LifestoneLogo } from "../ui/lifestone-logo";
 import { SITE } from "../../_lib/site";
 import { cn } from "../../_lib/utils";
@@ -83,9 +84,7 @@ export function SiteNav({ stars }: { stars: number }) {
               </span>
             </span>
           </Button>
-          <Button href={SITE.repo.releasesLatest} variant="primary" size="md">
-            Download
-          </Button>
+          <DownloadButton size="md" label="Download" />
         </div>
 
         <button
@@ -131,14 +130,11 @@ export function SiteNav({ stars }: { stars: number }) {
               <IconBrandGithub size={16} aria-hidden stroke={2} />
               GitHub <span className="text-muted-foreground">• {formatStars(stars)}</span>
             </Button>
-            <Button
-              href={SITE.repo.releasesLatest}
-              variant="primary"
+            <DownloadButton
               size="md"
+              label="Download"
               className="justify-center"
-            >
-              Download
-            </Button>
+            />
           </div>
         </div>
       </div>

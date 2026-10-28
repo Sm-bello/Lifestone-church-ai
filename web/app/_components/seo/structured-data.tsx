@@ -46,9 +46,11 @@ export function StructuredData() {
         description: SITE.description,
         applicationCategory: "MultimediaApplication",
         operatingSystem: SITE.operatingSystems.join(", "),
-        downloadUrl: SITE.repo.releasesLatest,
-        installUrl: SITE.repo.releasesLatest,
-        softwareVersion: "latest",
+        downloadUrl:
+          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
+        installUrl:
+          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
+        softwareVersion: "1.1.0",
         license: "https://opensource.org/licenses/MIT",
         isAccessibleForFree: true,
         offers: {
@@ -61,6 +63,7 @@ export function StructuredData() {
         featureList: [
           "Real-time speech transcription from live sermon audio",
           "Automatic Bible verse detection from explicit citations and quoted passages",
+          "Sub-second offline Whisper speech AI with 0.8s buffer",
           "Broadcast-ready scripture overlays via NDI",
           "Multi-translation support: KJV, ESV, NIV, NKJV, NLT",
           "Direct integration with OBS Studio and vMix",

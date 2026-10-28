@@ -5,7 +5,9 @@ import { useState, useEffect } from "react";
 export type Platform = "mac" | "windows" | "linux" | "mobile" | "other";
 
 export function detectPlatform(): Platform {
-  if (typeof navigator === "undefined") return "other";
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return "windows";
+  }
 
   const nav = navigator as Navigator & {
     userAgentData?: { platform?: string; mobile?: boolean };
@@ -31,11 +33,12 @@ export function detectPlatform(): Platform {
   if (/mac|darwin/.test(combined)) return "mac";
   if (/linux|x11|cros/.test(combined)) return "linux";
 
-  return "other";
+  // Default desktop PC to windows installer
+  return "windows";
 }
 
-export function usePlatform(): Platform | null {
-  const [platform, setPlatform] = useState<Platform | null>(null);
+export function usePlatform(): Platform {
+  const [platform, setPlatform] = useState<Platform>("windows");
 
   useEffect(() => {
     setPlatform(detectPlatform());

@@ -1,8 +1,7 @@
-import { Button } from "../ui/button";
+import { DownloadButton } from "../ui/download-button";
 import { Container } from "../ui/container";
 import { Reveal } from "../ui/reveal";
 import { SectionHeading } from "./section-heading";
-import { SITE } from "../../_lib/site";
 
 export function PricingSection() {
   return (
@@ -27,9 +26,7 @@ export function PricingSection() {
               </p>
             </div>
             <div>
-              <Button href={SITE.repo.releasesLatest} variant="primary">
-                Download
-              </Button>
+              <DownloadButton size="md" />
             </div>
           </div>
         </Reveal>
