@@ -1,25 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export type Platform = "mac" | "windows" | "linux" | "other";
+export type Platform = "mac" | "windows" | "linux" | "mobile" | "other";
 
-export function usePlatform(): Platform | null {
-  const [platform] = useState<Platform | null>(() => detectPlatform());
-  return platform;
+export function detectPlatform(): Platform {
+  if (typeof navigator === "undefined") return "other";
+
+  const nav = navigator as Navigator & {
+    userAgentData?: { platform?: string; mobile?: boolean };
+  };
+
+  const userAgent = nav.userAgent || "";
+  const platformStr = (nav.userAgentData?.platform ?? navigator.platform ?? "").toLowerCase();
+
+  // 1. Mobile check (phones, tablets, iOS, Android, Windows Mobile, etc.)
+  const isMobile =
+    Boolean(nav.userAgentData?.mobile) ||
+    /android|iphone|ipad|ipod|mobile|blackberry|iemobile|kindle|silk|opera mini/i.test(userAgent) ||
+    // iPadOS on Safari reports as MacIntel with touch points
+    (platformStr.includes("mac") && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1);
+
+  if (isMobile) {
+    return "mobile";
+  }
+
+  // 2. Desktop OS detection
+  const combined = `${platformStr} ${userAgent}`.toLowerCase();
+  if (/win/.test(combined)) return "windows";
+  if (/mac|darwin/.test(combined)) return "mac";
+  if (/linux|x11|cros/.test(combined)) return "linux";
+
+  return "other";
 }
 
-function detectPlatform(): Platform {
-  const nav = typeof navigator !== "undefined" ? navigator : undefined;
-  if (!nav) return "other";
+export function usePlatform(): Platform | null {
+  const [platform, setPlatform] = useState<Platform | null>(null);
 
-  const uaData = (
-    nav as Navigator & { userAgentData?: { platform?: string } }
-  ).userAgentData;
-  const source = (uaData?.platform ?? nav.userAgent ?? "").toLowerCase();
+  useEffect(() => {
+    setPlatform(detectPlatform());
+  }, []);
 
-  if (/mac|darwin|iphone|ipad|ipod/.test(source)) return "mac";
-  if (/win/.test(source)) return "windows";
-  if (/linux|x11|cros/.test(source)) return "linux";
-  return "other";
+  return platform;
 }
