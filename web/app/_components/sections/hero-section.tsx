@@ -1,7 +1,7 @@
 import { IconBrandGithub, IconPlayerPlay } from "@tabler/icons-react";
 import { Button } from "../ui/button";
 import { Container } from "../ui/container";
-import { DownloadButton } from "../ui/download-button";
+import { DownloadButton, WindowsCompatibilityNotice } from "../ui/download-button";
 import { SITE } from "../../_lib/site";
 
 export function HeroSection({ stars }: { stars: number }) {
@@ -31,9 +31,9 @@ export function HeroSection({ stars }: { stars: number }) {
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-4 mt-4">
+        <div className="flex flex-col items-center gap-5 mt-4 w-full max-w-2xl">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <DownloadButton size="lg" className="px-8 text-lg h-14" showCompatibilityNotice={true} />
+            <DownloadButton size="lg" className="px-8 text-lg h-14" />
             <Button
               href="#demo"
               variant="secondary"
@@ -44,6 +44,7 @@ export function HeroSection({ stars }: { stars: number }) {
               <span>Watch it in action</span>
             </Button>
           </div>
+          <WindowsCompatibilityNotice />
           <p className="text-[15px] leading-6 text-muted-foreground mt-2">
             Available for Windows and macOS
           </p>

@@ -18,14 +18,15 @@ import {
 import { Button } from "./button";
 import { usePlatform, type Platform } from "../../_lib/use-platform";
 import { SITE } from "../../_lib/site";
+import { cn } from "../../_lib/utils";
 
-const CURRENT_VERSION = "v1.1.0";
+export const CURRENT_VERSION = "v1.1.0";
 
-const DEFAULT_URLS: Record<"windows" | "windowsLite" | "mac" | "linux" | "other", string> = {
+export const DEFAULT_URLS: Record<"windows" | "windowsLite" | "mac" | "linux" | "other", string> = {
   windows:
     "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
   windowsLite:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_Lite_1.1.0_x64-setup.exe",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone.Lite_1.1.0_x64-setup.exe",
   mac:
     "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_aarch64.dmg",
   linux:
@@ -34,9 +35,26 @@ const DEFAULT_URLS: Record<"windows" | "windowsLite" | "mac" | "linux" | "other"
     "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
 };
 
+// Direct browser download trigger via invisible anchor (pops up native download manager immediately without page navigation)
+export function triggerDirectDownload(url: string) {
+  if (typeof window === "undefined") return;
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "");
+  link.setAttribute("target", "_self");
+  link.setAttribute("rel", "noopener noreferrer");
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    if (document.body.contains(link)) {
+      document.body.removeChild(link);
+    }
+  }, 150);
+}
+
 // Singleton promise for GitHub Releases API to avoid redundant network requests across multiple buttons
 let releaseDataPromise: Promise<any> | null = null;
-function fetchLatestReleaseData() {
+export function fetchLatestReleaseData() {
   if (!releaseDataPromise) {
     releaseDataPromise = fetch(
       `https://api.github.com/repos/${SITE.repo.owner}/${SITE.repo.name}/releases/latest`
@@ -73,16 +91,14 @@ export function DownloadButton({
     return DEFAULT_URLS.other;
   });
 
-  const [liteDownloadUrl, setLiteDownloadUrl] = useState<string>(DEFAULT_URLS.windowsLite);
   const [showMobileModal, setShowMobileModal] = useState(false);
-  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Update default URL whenever platform changes
   useEffect(() => {
     if (activePlatform === "windows") {
       setDownloadUrl(DEFAULT_URLS.windows);
-      setLiteDownloadUrl(DEFAULT_URLS.windowsLite);
     } else if (activePlatform === "mac") {
       setDownloadUrl(DEFAULT_URLS.mac);
     } else if (activePlatform === "linux") {
@@ -106,7 +122,6 @@ export function DownloadButton({
 
         const assets = data.assets || [];
         let targetAsset = null;
-        let targetLite = null;
 
         if (activePlatform === "mac") {
           targetAsset = assets.find((a: any) => a.name?.endsWith(".dmg"));
@@ -123,20 +138,10 @@ export function DownloadButton({
                 (a.name?.endsWith("setup.exe") || a.name?.endsWith(".exe"))
             ) ||
             assets.find((a: any) => a.name?.endsWith("setup.exe"));
-
-          // Lite / Compatibility Windows
-          targetLite = assets.find(
-            (a: any) =>
-              a.name?.toLowerCase().includes("lite") &&
-              (a.name?.endsWith(".exe") || a.name?.endsWith(".msi"))
-          );
         }
 
         if (targetAsset?.browser_download_url) {
           setDownloadUrl(targetAsset.browser_download_url);
-        }
-        if (targetLite?.browser_download_url) {
-          setLiteDownloadUrl(targetLite.browser_download_url);
         }
       });
     }
@@ -146,19 +151,18 @@ export function DownloadButton({
     };
   }, [activePlatform]);
 
-  // Handle ESC key to close modals
+  // Handle ESC key to close modal
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setShowMobileModal(false);
-        setShowGuideModal(false);
       }
     }
-    if (showMobileModal || showGuideModal) {
+    if (showMobileModal) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showMobileModal, showGuideModal]);
+  }, [showMobileModal]);
 
   const handleCopyLink = async () => {
     try {
@@ -168,6 +172,21 @@ export function DownloadButton({
     } catch {
       // fallback
     }
+  };
+
+  const handleStandardDownloadClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (activePlatform === "mobile") {
+      e.preventDefault();
+      setShowMobileModal(true);
+      return;
+    }
+    // Allow middle-click, ctrl+click, etc. to work natively
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    e.preventDefault();
+    setDownloading(true);
+    triggerDirectDownload(downloadUrl);
+    setTimeout(() => setDownloading(false), 2500);
   };
 
   const getButtonContent = () => {
@@ -286,43 +305,170 @@ export function DownloadButton({
   }
 
   return (
-    <>
-      <div className="flex flex-col items-center gap-2">
-        <Button
-          href={downloadUrl}
-          target="_self"
-          download=""
-          variant="primary"
-          size={size}
-          className={className}
-        >
-          {showIcon && <Icon size={16} aria-hidden stroke={2} />}
-          <span suppressHydrationWarning>{text}</span>
-        </Button>
+    <div className="flex flex-col items-center gap-3 w-full">
+      <Button
+        href={downloadUrl}
+        target="_self"
+        download=""
+        variant="primary"
+        size={size}
+        className={className}
+        onClick={handleStandardDownloadClick}
+      >
+        {downloading ? (
+          <>
+            <IconCheck size={16} className="animate-in zoom-in" stroke={2.5} />
+            <span>Starting download...</span>
+          </>
+        ) : (
+          <>
+            {showIcon && <Icon size={16} aria-hidden stroke={2} />}
+            <span suppressHydrationWarning>{text}</span>
+          </>
+        )}
+      </Button>
 
-        {showCompatibilityNotice && activePlatform === "windows" && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-            <span>Budget laptop (Pentium / Celeron)?</span>
-            <a
-              href={liteDownloadUrl}
-              target="_self"
-              download=""
-              className="text-accent-cyan hover:underline font-medium inline-flex items-center gap-1"
+      {showCompatibilityNotice && activePlatform === "windows" && (
+        <WindowsCompatibilityNotice />
+      )}
+    </div>
+  );
+}
+
+// Dedicated, bursting Windows Compatibility Hub & Lite Download Component
+export function WindowsCompatibilityNotice({ className }: { className?: string }) {
+  const platform = usePlatform();
+  const activePlatform: Platform = platform ?? "windows";
+
+  const [version, setVersion] = useState<string>(CURRENT_VERSION);
+  const [liteUrl, setLiteUrl] = useState<string>(DEFAULT_URLS.windowsLite);
+  const [standardUrl, setStandardUrl] = useState<string>(DEFAULT_URLS.windows);
+  const [downloadingLite, setDownloadingLite] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    fetchLatestReleaseData().then((data) => {
+      if (isCancelled || !data) return;
+
+      if (data.tag_name) {
+        setVersion(data.tag_name);
+      }
+
+      const assets = data.assets || [];
+      const targetLite = assets.find(
+        (a: any) =>
+          a.name?.toLowerCase().includes("lite") &&
+          (a.name?.endsWith(".exe") || a.name?.endsWith(".msi"))
+      );
+      const targetStandard = assets.find(
+        (a: any) =>
+          !a.name?.toLowerCase().includes("lite") &&
+          (a.name?.endsWith("setup.exe") || a.name?.endsWith(".exe"))
+      );
+
+      if (targetLite?.browser_download_url) {
+        setLiteUrl(targetLite.browser_download_url);
+      }
+      if (targetStandard?.browser_download_url) {
+        setStandardUrl(targetStandard.browser_download_url);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowGuideModal(false);
+      }
+    }
+    if (showGuideModal) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showGuideModal]);
+
+  const handleLiteDownloadClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setDownloadingLite(true);
+    triggerDirectDownload(liteUrl);
+    setTimeout(() => setDownloadingLite(false), 2500);
+  };
+
+  if (activePlatform === "mobile") return null;
+
+  return (
+    <>
+      <div
+        className={cn(
+          "relative w-full max-w-2xl mx-auto rounded-2xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface-strong/60 to-accent-cyan/10 backdrop-blur-xl p-3 sm:px-5 sm:py-3.5 shadow-xl shadow-cyan-950/20 transition-all duration-300 hover:border-accent-cyan/40 hover:shadow-cyan-950/40 text-left",
+          className
+        )}
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          {/* Left: Info & Processor Tag */}
+          <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-cyan/15 border border-accent-cyan/30 text-accent-cyan shadow-sm shadow-accent-cyan/20">
+              <IconFeather size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-semibold text-foreground tracking-tight">
+                  Budget laptop?
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-cyan/15 border border-accent-cyan/30 px-2 py-0.5 text-[10px] font-bold text-accent-cyan uppercase tracking-wider">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent-cyan animate-pulse" />
+                  Pentium / Celeron
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                Lightweight SSE4 build • Safe graphics mode • Zero lag
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center justify-end gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
+            <button
+              type="button"
+              onClick={handleLiteDownloadClick}
+              className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-cyan via-sky-500 to-blue-600 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-md shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+              aria-label="Download Lifestone Lite Edition for Windows"
             >
-              <IconFeather size={13} />
-              <span>Download Lite Edition</span>
-            </a>
-            <span>•</span>
+              {downloadingLite ? (
+                <>
+                  <IconCheck size={16} className="text-white animate-in zoom-in" stroke={2.5} />
+                  <span>Downloading...</span>
+                </>
+              ) : (
+                <>
+                  <IconDownload size={15} className="text-white group-hover:-translate-y-0.5 transition-transform" />
+                  <span>Download Lite</span>
+                  <span className="hidden xs:inline-block rounded bg-black/25 px-1.5 py-0.2 text-[10px] font-mono text-white/90">
+                    {version}
+                  </span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setShowGuideModal(true)}
-              className="text-accent-gold hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 hover:border-accent-gold/40 bg-white/5 hover:bg-accent-gold/10 px-3 py-2 text-xs sm:text-sm font-medium text-accent-gold transition-all duration-200 cursor-pointer"
+              aria-label="Which Lifestone version do I need?"
             >
-              <IconHelpCircle size={13} />
-              <span>Which version do I need?</span>
+              <IconHelpCircle size={15} />
+              <span className="hidden sm:inline">Which version?</span>
+              <span className="sm:hidden">Help</span>
             </button>
           </div>
-        )}
+        </div>
       </div>
 
       {showGuideModal && (
@@ -380,20 +526,22 @@ export function DownloadButton({
                     <li>• AVX2 vector acceleration</li>
                   </ul>
                 </div>
-                <a
-                  href={downloadUrl}
-                  target="_self"
-                  download=""
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-white/90 transition-colors"
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerDirectDownload(standardUrl);
+                    setShowGuideModal(false);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-white/90 transition-colors cursor-pointer"
                 >
                   <IconDownload size={14} />
                   <span>Download Standard</span>
-                </a>
+                </button>
               </div>
 
               {/* Lite Edition Card */}
-              <div className="flex flex-col justify-between rounded-xl border border-accent/40 bg-accent/5 p-4 relative">
-                <span className="absolute -top-2.5 right-3 bg-accent text-[10px] font-bold text-background px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <div className="flex flex-col justify-between rounded-xl border border-accent-cyan/40 bg-accent-cyan/5 p-4 relative">
+                <span className="absolute -top-2.5 right-3 bg-accent-cyan text-[10px] font-bold text-background px-2 py-0.5 rounded-full uppercase tracking-wider">
                   Universal Safe
                 </span>
                 <div>
@@ -411,15 +559,17 @@ export function DownloadButton({
                     <li>• Safe GPU mode, &lt; 150 MB RAM</li>
                   </ul>
                 </div>
-                <a
-                  href={liteDownloadUrl}
-                  target="_self"
-                  download=""
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-background hover:bg-accent-cyan transition-colors"
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerDirectDownload(liteUrl);
+                    setShowGuideModal(false);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-accent-cyan to-blue-600 px-3 py-2 text-xs font-semibold text-white hover:brightness-110 transition-all cursor-pointer shadow-md shadow-cyan-500/20"
                 >
                   <IconDownload size={14} />
                   <span>Download Lite</span>
-                </a>
+                </button>
               </div>
             </div>
 
@@ -432,8 +582,8 @@ export function DownloadButton({
               <p className="text-muted-foreground leading-relaxed">
                 Open Windows <strong>Settings</strong> (or press <strong>Win + I</strong>) → <strong>System</strong> → <strong>About</strong>. Look at your <strong>Processor</strong> line:
               </p>
-              <div className="rounded-lg bg-black/40 p-2.5 font-mono text-[11px] text-foreground/90 border border-border">
-                <p>Processor: <span className="text-accent-cyan">Intel(R) Pentium(R) CPU N3530...</span> → <strong className="text-accent">Choose Lite</strong></p>
+              <div className="rounded-lg bg-black/40 p-2.5 font-mono text-[11px] text-foreground/90 border border-border space-y-1">
+                <p>Processor: <span className="text-accent-cyan">Intel(R) Pentium(R) CPU N3530...</span> → <strong className="text-accent-cyan">Choose Lite</strong></p>
                 <p>Processor: <span className="text-primary">Intel(R) Core(TM) i5-1135G7...</span> → <strong className="text-primary">Choose Standard</strong></p>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { Button } from "../ui/button";
 import { Container } from "../ui/container";
-import { DownloadButton } from "../ui/download-button";
+import { DownloadButton, WindowsCompatibilityNotice } from "../ui/download-button";
 import { Reveal } from "../ui/reveal";
 import { SITE } from "../../_lib/site";
 
@@ -21,9 +21,9 @@ export function FinalCtaSection({ stars }: { stars: number }) {
             <span className="text-accent">presentations with AI</span>
           </h2>
         </Reveal>
-        <Reveal className="flex flex-col items-center gap-4">
+        <Reveal className="flex flex-col items-center gap-5 w-full max-w-2xl">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <DownloadButton showCompatibilityNotice={true} />
+            <DownloadButton />
             <Button
               href={SITE.repo.url}
               variant="secondary"
@@ -37,6 +37,7 @@ export function FinalCtaSection({ stars }: { stars: number }) {
               </span>
             </Button>
           </div>
+          <WindowsCompatibilityNotice />
           <p className="text-[15px] leading-6 text-muted-foreground">
             Available for Windows and macOS
           </p>
