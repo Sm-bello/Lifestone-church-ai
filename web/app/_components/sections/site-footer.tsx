@@ -96,7 +96,21 @@ export function SiteFooter() {
           ))}
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 text-[13px] leading-5 text-subtle-foreground md:flex-row md:items-center">
-          <p>© {new Date().getFullYear()} Lifestone. All rights reserved.</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <p>© {new Date().getFullYear()} Lifestone. All rights reserved.</p>
+            <span className="hidden sm:inline text-border">•</span>
+            <p className="text-xs text-muted-foreground/80">
+              Free code signing provided by{" "}
+              <a
+                href="https://signpath.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                SignPath Foundation
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-4">
             <a
               href={SITE.socials.github}
