@@ -22,6 +22,10 @@ jobs:
             args: ''
           - platform: 'windows-latest'
             args: '--config src-tauri/tauri.windows.conf.json'
+            is_lite: 'false'
+          - platform: 'windows-latest'
+            args: '--config src-tauri/tauri.windows-lite.conf.json -- --no-default-features --features lite'
+            is_lite: 'true'
 
     runs-on: ${{ matrix.platform }}
     env:
@@ -98,6 +102,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          GGML_AVX: ${{ matrix.is_lite == 'true' && 'OFF' || 'ON' }}
+          GGML_AVX2: ${{ matrix.is_lite == 'true' && 'OFF' || 'ON' }}
+          GGML_FMA: ${{ matrix.is_lite == 'true' && 'OFF' || 'ON' }}
+          GGML_F16C: ${{ matrix.is_lite == 'true' && 'OFF' || 'ON' }}
+          GGML_BMI2: ${{ matrix.is_lite == 'true' && 'OFF' || 'ON' }}
+          GGML_AVX512: 'OFF'
         with:
           tagName: v__VERSION__
           releaseName: 'Lifestone v__VERSION__'

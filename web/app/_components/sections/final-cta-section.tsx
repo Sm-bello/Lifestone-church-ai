@@ -23,7 +23,7 @@ export function FinalCtaSection({ stars }: { stars: number }) {
         </Reveal>
         <Reveal className="flex flex-col items-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <DownloadButton />
+            <DownloadButton showCompatibilityNotice={true} />
             <Button
               href={SITE.repo.url}
               variant="secondary"

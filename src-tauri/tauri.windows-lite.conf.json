@@ -1,0 +1,11 @@
+{
+  "productName": "Lifestone Lite",
+  "bundle": {
+    "targets": ["nsis"],
+    "externalBin": ["binaries/ppt_sidecar"],
+    "resources": [
+      "../models/whisper/ggml-tiny.bin",
+      "../data/lifestone.db"
+    ]
+  }
+}

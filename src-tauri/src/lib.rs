@@ -183,6 +183,7 @@ pub fn run() {
                 log::warn!("Bible database not found in resource dir or fallback paths");
             }
 
+            #[cfg(feature = "onnx")]
             let base_dir = app
                 .path()
                 .resource_dir()
@@ -191,6 +192,7 @@ pub fn run() {
                 .unwrap_or_else(|| {
                     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
                 });
+            #[cfg(feature = "onnx")]
             let model_path = {
                 let minilm = base_dir.join("models/minilm-onnx/onnx/model.onnx");
                 if minilm.exists() {
@@ -211,19 +213,26 @@ pub fn run() {
                     }
                 }
             };
+            #[cfg(feature = "onnx")]
             let tokenizer_path = base_dir.join("models/qwen3-embedding-0.6b/tokenizer.json");
+            #[cfg(feature = "onnx")]
             let embeddings_path = base_dir.join("embeddings/kjv-qwen3-0.6b.bin");
+            #[cfg(feature = "onnx")]
             let ids_path = base_dir.join("embeddings/kjv-qwen3-0.6b-ids.bin");
 
+            #[cfg(feature = "onnx")]
             if model_path.exists() && tokenizer_path.exists() {
                 use lifestone_detection::semantic::embedder::TextEmbedder;
+                #[cfg(feature = "vector-search")]
                 use lifestone_detection::semantic::index::VectorIndex;
+
                 match lifestone_detection::OnnxEmbedder::load(&model_path, &tokenizer_path) {
                     Ok(embedder) => {
                         log::info!("ONNX embedding model loaded");
                         let managed_pipeline = app.state::<Mutex<lifestone_detection::DetectionPipeline>>();
                         let mut pipeline = managed_pipeline.lock().unwrap();
 
+                        #[cfg(feature = "vector-search")]
                         if embeddings_path.exists() && ids_path.exists() {
                             let dim = embedder.dimension();
                             match lifestone_detection::HnswVectorIndex::load(&embeddings_path, &ids_path, dim) {
@@ -250,6 +259,11 @@ pub fn run() {
                 }
             } else {
                 log::info!("ONNX model not found. Semantic search disabled. Run 'bun run download:model' to download.");
+            }
+
+            #[cfg(not(feature = "onnx"))]
+            {
+                log::info!("[DETECTION] Running in Lite / Compatibility mode: Direct high-speed scripture matching active.");
             }
 
             Ok(())

@@ -87,7 +87,8 @@ pub async fn start_transcription(
                 candidates.into_iter().flatten().find(|p| p.exists())
             };
 
-            let primary_filename = if model.as_deref().unwrap_or("").contains("tiny") {
+            let has_base = resolve_model_path("ggml-base.bin").is_some();
+            let primary_filename = if model.as_deref().unwrap_or("").contains("tiny") || !has_base {
                 "ggml-tiny.bin"
             } else {
                 "ggml-base.bin"

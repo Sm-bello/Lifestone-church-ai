@@ -26,7 +26,7 @@ export function PricingSection() {
               </p>
             </div>
             <div>
-              <DownloadButton size="md" />
+              <DownloadButton size="md" showCompatibilityNotice={true} />
             </div>
           </div>
         </Reveal>

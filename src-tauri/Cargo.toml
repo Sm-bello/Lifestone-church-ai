@@ -59,7 +59,7 @@ lifestone-audio = { path = "crates/lifestone-audio" }
 lifestone-bible = { path = "crates/lifestone-bible" }
 lifestone-stt = { path = "crates/lifestone-stt" }
 lifestone-broadcast = { path = "crates/lifestone-broadcast" }
-lifestone-detection = { path = "crates/lifestone-detection", features = ["onnx", "vector-search"] }
+lifestone-detection = { path = "crates/lifestone-detection" }
 lifestone-api = { path = "crates/lifestone-api" }
 crossbeam-channel = "0.5"
 base64 = "0.22"
@@ -69,8 +69,11 @@ tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
 
 [features]
-default = ["whisper"]
+default = ["whisper", "onnx", "vector-search"]
 whisper = ["lifestone-stt/whisper"]
+onnx = ["lifestone-detection/onnx"]
+vector-search = ["lifestone-detection/vector-search"]
+lite = ["whisper"]
 
 [lints]
 workspace = true

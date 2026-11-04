@@ -33,7 +33,7 @@ export function HeroSection({ stars }: { stars: number }) {
 
         <div className="flex flex-col items-center gap-4 mt-4">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <DownloadButton size="lg" className="px-8 text-lg h-14" />
+            <DownloadButton size="lg" className="px-8 text-lg h-14" showCompatibilityNotice={true} />
             <Button
               href="#demo"
               variant="secondary"
