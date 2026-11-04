@@ -7,6 +7,7 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   InfoIcon,
+  GraduationCapIcon,
 } from "lucide-react"
 import {
   Dialog,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ReleaseNotesView } from "@/components/release-notes-view"
 import { useUpdateStore } from "@/stores"
+import { useTutorialStore } from "@/stores/tutorial-store"
 
 export function UpdateDialog() {
   const isDialogOpen = useUpdateStore((s) => s.isDialogOpen)
@@ -33,38 +35,35 @@ export function UpdateDialog() {
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const handleOpenRelease = async () => {
-    await openExternalUrl("https://lifestone-church-ai.vercel.app")
+    if (latestRelease?.url) {
+      await openExternalUrl(latestRelease.url)
+    }
   }
 
   const handleManualCheck = async () => {
     setFeedback(null)
-    const found = await checkForUpdates(false)
-    if (found) {
-      setFeedback("A new release is available!")
-    } else {
-      setFeedback("You are already running the latest release.")
+    const update = await checkForUpdates()
+    if (!update) {
+      setFeedback("You're on the latest version!")
+      setTimeout(() => setFeedback(null), 3000)
     }
   }
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-      <DialogContent className="max-w-lg border-border bg-card p-6 sm:max-w-xl">
-        <DialogHeader className="space-y-1">
+      <DialogContent className="max-w-md">
+        <DialogHeader>
           <div className="flex items-center gap-2">
-            {hasUpdate ? (
-              <div className="flex size-8 items-center justify-center rounded-full bg-rose-500/15 text-rose-500">
-                <SparklesIcon className="size-4 animate-pulse" />
-              </div>
-            ) : (
-              <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
-                <CheckCircle2Icon className="size-4" />
-              </div>
-            )}
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              {hasUpdate ? (
+                <SparklesIcon className="size-4 animate-spin text-rose-500" />
+              ) : (
+                <CheckCircle2Icon className="size-4 text-emerald-500" />
+              )}
+            </div>
             <div>
               <DialogTitle className="text-base font-semibold">
-                {hasUpdate
-                  ? "New Release Available"
-                  : "Lifestone is Up to Date"}
+                {hasUpdate ? "New Release Available" : "Notifications & Updates"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 Current installed version: v{currentVersion}
@@ -152,12 +151,51 @@ export function UpdateDialog() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4 pt-3">
-            <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-4 text-center">
+          <div className="space-y-4 pt-2">
+            {/* Feature Spotlight Card */}
+            <div className="space-y-2.5 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-left">
+              <div className="flex items-center gap-2">
+                <span className="flex size-2 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                  New Features &amp; Tutorial Update
+                </span>
+              </div>
+              <h4 className="text-sm font-semibold text-foreground">
+                Church Hymnal, HDMI Projector &amp; Refresher Tour
+              </h4>
+              <ul className="text-xs text-muted-foreground space-y-2 pt-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-cyan-400">🎵</span>
+                  <span><strong>Church Hymnal:</strong> Over 2,000 hymns from Gospel Hymn Book (GHS) &amp; classic hymnals with instant lyric search and live projection.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400">⚡</span>
+                  <span><strong>Plug-and-Play HDMI:</strong> Automatic display detection for church projectors and TVs. Just plug in and Lifestone asks which screen to use.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400">🎓</span>
+                  <span><strong>Updated Interactive Tutorial:</strong> Full walkthrough now includes the Hymnal and Projector controls, plus an intelligent 2-day inactivity refresher.</span>
+                </li>
+              </ul>
+              <div className="pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-2 text-xs border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 cursor-pointer"
+                  onClick={() => {
+                    closeDialog()
+                    useTutorialStore.getState().startTutorial()
+                  }}
+                >
+                  <GraduationCapIcon className="size-3.5" />
+                  Start Interactive Tutorial Guide
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1 rounded-lg border border-border bg-muted/20 p-3 text-center">
               <p className="text-xs text-muted-foreground">
-                You are currently running the latest official release (v
-                {currentVersion}). When a new version is published, a red alert
-                dot will appear on your notification icon.
+                You are currently running the latest official release: <strong>v{currentVersion}</strong>
               </p>
               {lastCheckedAt && (
                 <p className="text-[0.65rem] text-muted-foreground/70">
@@ -172,7 +210,7 @@ export function UpdateDialog() {
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-2 pt-2">
+            <div className="flex items-center justify-between gap-2 pt-1">
               <Button
                 variant="outline"
                 size="sm"

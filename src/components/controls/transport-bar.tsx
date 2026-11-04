@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { toast } from "sonner"
 import { LevelMeter } from "@/components/ui/level-meter"
 import { LiveIndicator } from "@/components/ui/live-indicator"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,7 @@ import { ThemeDesigner } from "@/components/broadcast/theme-designer"
 import { BroadcastSettings } from "@/components/broadcast/broadcast-settings"
 import { HdmiProjectorBanner } from "@/components/broadcast/hdmi-projector-banner"
 import { useAudioStore, useTranscriptStore, useBroadcastStore, useHymnStore, useUpdateStore } from "@/stores"
+import { useTutorialStore } from "@/stores/tutorial-store"
 import { useTheme } from "@/components/theme-provider"
 import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
 import { cn } from "@/lib/utils"
@@ -28,10 +30,48 @@ export function TransportBar() {
   const [projectorOpen, setProjectorOpen] = useState(false)
   const [bannerVisible, setBannerVisible] = useState(false)
 
+  const [hasSeenHymnNotification, setHasSeenHymnNotification] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("lifestone_hymn_announcement_seen_v1") === "true"
+    } catch {
+      return false
+    }
+  })
+
+  const dismissHymnNotification = useCallback(() => {
+    try {
+      localStorage.setItem("lifestone_hymn_announcement_seen_v1", "true")
+    } catch {
+      // non-fatal
+    }
+    setHasSeenHymnNotification(true)
+  }, [])
+
   // Initialize quiet background release listener on startup
   useEffect(() => {
     void useUpdateStore.getState().init()
   }, [])
+
+  // Flash a welcoming announcement toast on launch if not yet acknowledged
+  useEffect(() => {
+    if (!hasSeenHymnNotification) {
+      const timer = setTimeout(() => {
+        toast("🎵 Church Hymnal & HDMI Auto-Detect Are Live!", {
+          description:
+            "Over 2,000 hymns ready for worship. The interactive tutorial guide has been updated with full projector & hymnal walkthroughs.",
+          action: {
+            label: "Take Tour",
+            onClick: () => {
+              dismissHymnNotification()
+              useTutorialStore.getState().startTutorial()
+            },
+          },
+          duration: 9000,
+        })
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [hasSeenHymnNotification, dismissHymnNotification])
 
   const hdmiState = useHdmiMonitor()
 
@@ -124,6 +164,7 @@ export function TransportBar() {
           <Button
             variant={projectorOpen ? "default" : "ghost"}
             size="icon-sm"
+            data-tour="projector-toggle"
             title={
               projectorOpen
                 ? "Projector active – click to close"
@@ -142,18 +183,39 @@ export function TransportBar() {
             <MonitorPlay className="size-3.5" />
           </Button>
 
-          {/* Hymnal / Worship Console Toggle */}
-          <Button
-            variant={isHymnOpen || activeStanzaId ? "default" : "ghost"}
-            size="icon-sm"
-            title={activeStanzaId ? "Hymn presenting – click to view console" : "Hymnal & Worship Songs"}
-            onClick={() => useHymnStore.getState().openConsole()}
-            className={cn(
-              activeStanzaId && "bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse"
+          {/* Hymnal / Worship Console Toggle with Pulsating Announcement Badge */}
+          <div className="relative flex items-center">
+            <Button
+              variant={isHymnOpen || activeStanzaId ? "default" : "ghost"}
+              size="icon-sm"
+              data-tour="hymnal-toggle"
+              title={
+                activeStanzaId
+                  ? "Hymn presenting – click to view console"
+                  : !hasSeenHymnNotification
+                  ? "🎵 New: Church Hymnal (2,000+ Hymns) – Click to explore"
+                  : "Hymnal & Worship Songs"
+              }
+              onClick={() => {
+                dismissHymnNotification()
+                useHymnStore.getState().openConsole()
+              }}
+              className={cn(
+                activeStanzaId && "bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse"
+              )}
+            >
+              <Music2 className="size-3.5" />
+            </Button>
+            {!hasSeenHymnNotification && !activeStanzaId && (
+              <span
+                className="pointer-events-none absolute -top-1 -right-1 flex h-2.5 w-2.5"
+                title="New Feature: Church Hymnal is live!"
+              >
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500 ring-2 ring-card" />
+              </span>
             )}
-          >
-            <Music2 className="size-3.5" />
-          </Button>
+          </div>
 
           <Button
             variant="ghost"
@@ -187,7 +249,8 @@ export function TransportBar() {
             <PaletteIcon className="size-3.5" />
           </Button>
           <ThemeDesigner />
-          {/* Release Notification Bell with Persistent Red Dot */}
+
+          {/* Release Notification Bell with Persistent Notification Badge */}
           <div className="relative flex items-center">
             <Button
               variant="ghost"
@@ -195,16 +258,28 @@ export function TransportBar() {
               title={
                 hasUpdate
                   ? `New update available: v${latestRelease?.version}`
+                  : !hasSeenHymnNotification
+                  ? "New Features: Church Hymnal & HDMI Auto-Detect"
                   : "Notifications & Updates"
               }
-              onClick={() => useUpdateStore.getState().openDialog()}
+              onClick={() => {
+                dismissHymnNotification()
+                useUpdateStore.getState().openDialog()
+              }}
             >
               <BellIcon className="size-3.5" />
             </Button>
-            {hasUpdate && (
+            {(hasUpdate || !hasSeenHymnNotification) && (
               <span
-                className="pointer-events-none absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500 animate-pulse ring-2 ring-card"
-                title={`New release available: v${latestRelease?.version}`}
+                className={cn(
+                  "pointer-events-none absolute top-1.5 right-1.5 size-2 rounded-full ring-2 ring-card animate-pulse",
+                  hasUpdate ? "bg-rose-500" : "bg-cyan-400"
+                )}
+                title={
+                  hasUpdate
+                    ? `New release available: v${latestRelease?.version}`
+                    : "New feature: Church Hymnal & HDMI guide"
+                }
               />
             )}
           </div>
@@ -216,12 +291,13 @@ export function TransportBar() {
 
       {/* ── HDMI / Projector guidance banner (slides in below the bar) ── */}
       {showBanner && (
-        <div className="border-t border-border px-3 pb-3 pt-2">
+        <div className="border-t border-border/60 bg-muted/30 px-3 py-1.5">
           <HdmiProjectorBanner
-            {...hdmiState}
-            dismissHdmi={handleBannerDismiss}
+            monitors={hdmiState.monitors}
             projectorOpen={projectorOpen}
-            onProjectorOpen={setProjectorOpen}
+            openProjector={openProjector}
+            closeProjector={closeProjector}
+            dismissHdmi={handleBannerDismiss}
           />
         </div>
       )}

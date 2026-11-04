@@ -97,4 +97,34 @@ describe("tutorial store", () => {
     )
     warnSpy.mockRestore()
   })
+
+  it("triggers refresher when inactive for more than 2 days", async () => {
+    const { hydrateOnboardingState, TWO_DAYS_MS } = await import("./tutorial-store")
+    const threeDaysAgo = Date.now() - (TWO_DAYS_MS + 24 * 60 * 60 * 1000)
+
+    mockGet.mockImplementation((key: string) => {
+      if (key === "onboardingComplete") return Promise.resolve(true)
+      if (key === "lastActiveTimestamp") return Promise.resolve(threeDaysAgo)
+      return Promise.resolve(null)
+    })
+
+    const result = await hydrateOnboardingState()
+    expect(result.shouldRun).toBe(true)
+    expect(result.isRefresher).toBe(true)
+  })
+
+  it("does not trigger refresher when user was recently active", async () => {
+    const { hydrateOnboardingState } = await import("./tutorial-store")
+    const oneHourAgo = Date.now() - 60 * 60 * 1000
+
+    mockGet.mockImplementation((key: string) => {
+      if (key === "onboardingComplete") return Promise.resolve(true)
+      if (key === "lastActiveTimestamp") return Promise.resolve(oneHourAgo)
+      return Promise.resolve(null)
+    })
+
+    const result = await hydrateOnboardingState()
+    expect(result.shouldRun).toBe(false)
+    expect(result.isRefresher).toBe(false)
+  })
 })
