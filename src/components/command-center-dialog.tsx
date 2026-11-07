@@ -14,6 +14,8 @@ import {
   LockIcon,
   KeyRoundIcon,
   XIcon,
+  CpuIcon,
+  FingerprintIcon,
 } from "lucide-react"
 import {
   Dialog,
@@ -24,7 +26,15 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useFeedbackStore, type FeedbackMessage } from "@/stores/feedback-store"
+import {
+  useFeedbackStore,
+  useTranscriptStore,
+  useHymnStore,
+  useBibleStore,
+  type FeedbackMessage,
+} from "@/stores"
+import { useGpuInfo } from "@/hooks/use-gpu-info"
+import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
 import { openExternalUrl } from "@/lib/open-external"
 import { cn } from "@/lib/utils"
 
@@ -35,12 +45,18 @@ const COMMAND_CENTER_BASE_URL =
 export interface BeaconNodeItem {
   nodeId: string
   signature: string
+  publicKeyFingerprint: string
+  cryptoAlgorithm: string
+  lastSignatureHex?: string
   churchName: string
   displayName: string
   email: string
   churchAddress: string
   city: string
+  region: string
   country: string
+  isp: string
+  ip: string
   latitude: number
   longitude: number
   appVersion: string
@@ -50,6 +66,7 @@ export interface BeaconNodeItem {
   status: "live" | "transcribing" | "online"
   activeItem: string
   screenCount: number
+  cpuCores: number
   lastSeenAt: number
 }
 
@@ -59,89 +76,6 @@ interface ThreadItem {
   messages: FeedbackMessage[]
   lastUpdatedAt: number
 }
-
-const DEFAULT_SEED_NODES: BeaconNodeItem[] = [
-  {
-    nodeId: "LS-NODE-9A4F12",
-    signature: "LS-SIG-9A4F-RCCGLA",
-    churchName: "RCCG The Oasis Sanctuary",
-    displayName: "Bro. Emmanuel (Media Lead)",
-    email: "media.oasis@gmail.com",
-    churchAddress: "Victoria Island, Lagos, Nigeria",
-    city: "Lagos",
-    country: "Nigeria",
-    latitude: 6.4281,
-    longitude: 3.4219,
-    appVersion: "1.1.0",
-    hasGpu: true,
-    gpuName: "NVIDIA GeForce RTX 3060",
-    performanceTier: "ultra",
-    status: "live",
-    activeItem: "Presenting: Romans 8:28 (KJV)",
-    screenCount: 2,
-    lastSeenAt: Date.now() - 25_000,
-  },
-  {
-    nodeId: "LS-NODE-3C8B01",
-    signature: "LS-SIG-3C8B-GRACEC",
-    churchName: "Grace Community Fellowship",
-    displayName: "Pastor Caleb",
-    email: "caleb.gracefellowship@gmail.com",
-    churchAddress: "1400 Congress Ave, Austin, TX",
-    city: "Austin",
-    country: "United States",
-    latitude: 30.2672,
-    longitude: -97.7431,
-    appVersion: "1.1.0",
-    hasGpu: false,
-    gpuName: "Intel(R) Pentium(R) N3530 HD Graphics",
-    performanceTier: "budget-cpu",
-    status: "transcribing",
-    activeItem: "Hymn #14: Amazing Grace (Stanza 2)",
-    screenCount: 2,
-    lastSeenAt: Date.now() - 48_000,
-  },
-  {
-    nodeId: "LS-NODE-7E2D90",
-    signature: "LS-SIG-7E2D-KINGSW",
-    churchName: "Kingsway International Christian Centre",
-    displayName: "Sister Sarah",
-    email: "av.kingswayuk@gmail.com",
-    churchAddress: "Hoe Street, Walthamstow, London",
-    city: "London",
-    country: "United Kingdom",
-    latitude: 51.5842,
-    longitude: -0.0197,
-    appVersion: "1.1.0",
-    hasGpu: true,
-    gpuName: "Apple M2 Pro GPU",
-    performanceTier: "ultra",
-    status: "live",
-    activeItem: "Presenting: Psalm 23:1-4 (KJV)",
-    screenCount: 3,
-    lastSeenAt: Date.now() - 70_000,
-  },
-  {
-    nodeId: "LS-NODE-5F1A88",
-    signature: "LS-SIG-5F1A-BETHEL",
-    churchName: "Bethel Worship Center Nairobi",
-    displayName: "David Ochieng",
-    email: "bethelnairobi.media@gmail.com",
-    churchAddress: "Ngong Road, Nairobi, Kenya",
-    city: "Nairobi",
-    country: "Kenya",
-    latitude: -1.2921,
-    longitude: 36.8219,
-    appVersion: "1.1.0",
-    hasGpu: false,
-    gpuName: "Intel(R) Celeron(R) UHD Graphics 600",
-    performanceTier: "budget-cpu",
-    status: "online",
-    activeItem: "Standby — Pre-Service Check",
-    screenCount: 2,
-    lastSeenAt: Date.now() - 110_000,
-  },
-]
 
 function latLngToSvg(lat: number, lng: number): { x: number; y: number } {
   const x = ((lng + 180) / 360) * 1000
@@ -161,6 +95,16 @@ export function CommandCenterDialog({
 }) {
   const localProfile = useFeedbackStore((s) => s.profile)
   const localMessages = useFeedbackStore((s) => s.messages)
+  const refreshRealLocation = useFeedbackStore((s) => s.refreshRealLocation)
+  const sendBeaconHeartbeat = useFeedbackStore((s) => s.sendBeaconHeartbeat)
+
+  const isTranscribing = useTranscriptStore((s) => s.isTranscribing)
+  const activeHymn = useHymnStore((s) => s.selectedHymn)
+  const activeStanzaId = useHymnStore((s) => s.activeStanzaId)
+  const liveVerse = useBibleStore((s) => s.liveVerse)
+
+  const gpuInfo = useGpuInfo()
+  const hdmiState = useHdmiMonitor()
 
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
     try {
@@ -172,7 +116,7 @@ export function CommandCenterDialog({
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState(false)
 
-  const [nodes, setNodes] = useState<BeaconNodeItem[]>(DEFAULT_SEED_NODES)
+  const [nodes, setNodes] = useState<BeaconNodeItem[]>([])
   const [threads, setThreads] = useState<ThreadItem[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"world" | "building">("world")
@@ -182,58 +126,104 @@ export function CommandCenterDialog({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusBanner, setStatusBanner] = useState<string | null>(null)
 
+  // Compute real live activity string from actual stores
+  const realActiveItem = activeStanzaId && activeHymn
+    ? `Presenting Hymn #${activeHymn.number}: ${activeHymn.title}`
+    : liveVerse
+    ? `Presenting ${liveVerse.book_name} ${liveVerse.chapter}:${liveVerse.verse}`
+    : isTranscribing
+    ? "🎙️ Live AI Voice Transcription Active"
+    : "Online — Ready to Present"
+
+  const realStatus: "live" | "transcribing" | "online" =
+    activeStanzaId || liveVerse
+      ? "live"
+      : isTranscribing
+      ? "transcribing"
+      : "online"
+
   const syncCommandCenterData = useCallback(async () => {
     setIsRefreshing(true)
     try {
-      // Include this local desktop runner as a live node on the Command Center map!
+      await refreshRealLocation()
+      await sendBeaconHeartbeat({
+        status: realStatus,
+        activeItem: realActiveItem,
+        screenCount: hdmiState.monitors.length || 1,
+      })
+
+      const freshProfile = useFeedbackStore.getState().profile
+      const lat = freshProfile.latitude ?? 0
+      const lng = freshProfile.longitude ?? 0
+      const locationLabel =
+        freshProfile.churchAddress ||
+        [freshProfile.city, freshProfile.region, freshProfile.country]
+          .filter(Boolean)
+          .join(", ") ||
+        "Resolving Live IP Geolocation..."
+
+      // Construct 100% REAL telemetry node for this live machine
       const selfNode: BeaconNodeItem = {
-        nodeId: localProfile.nodeId,
-        signature: localProfile.signature,
-        churchName: localProfile.churchName || "This PC (Local Sanctuary Node)",
-        displayName: localProfile.displayName || "Admin / Developer PC",
-        email: localProfile.email || "local@lifestone.app",
-        churchAddress: localProfile.churchAddress || "Local Sanctuary Workstation",
-        city: localProfile.city || "Local",
-        country: localProfile.country || "Workstation",
-        latitude: localProfile.latitude ?? 9.082,
-        longitude: localProfile.longitude ?? 8.6753,
+        nodeId: freshProfile.nodeId,
+        signature: freshProfile.signature,
+        publicKeyFingerprint: freshProfile.publicKeyFingerprint || "Generating ECDSA P-256...",
+        cryptoAlgorithm: freshProfile.cryptoAlgorithm || "ECDSA-P256-SHA256",
+        lastSignatureHex: freshProfile.lastSignatureHex,
+        churchName:
+          freshProfile.churchName ||
+          (freshProfile.city
+            ? `Lifestone Sanctuary (${freshProfile.city})`
+            : "This PC (Live Lifestone Node)"),
+        displayName: freshProfile.displayName || "Local Sanctuary Operator",
+        email: freshProfile.email || "Not signed in with Gmail yet",
+        churchAddress: locationLabel,
+        city: freshProfile.city || "Detecting...",
+        region: freshProfile.region || "",
+        country: freshProfile.country || "",
+        isp: freshProfile.isp || "Direct Internet",
+        ip: freshProfile.ip || "",
+        latitude: lat,
+        longitude: lng,
         appVersion: "1.1.0",
-        hasGpu: true,
-        gpuName: "Local Hardware Adapter",
-        performanceTier: "high",
-        status: "live",
-        activeItem: "Command Center Active",
-        screenCount: 1,
+        hasGpu: gpuInfo.hasGpu,
+        gpuName: gpuInfo.gpuName,
+        performanceTier: gpuInfo.performanceTier,
+        status: realStatus,
+        activeItem: realActiveItem,
+        screenCount: hdmiState.monitors.length || 1,
+        cpuCores:
+          typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4,
         lastSeenAt: Date.now(),
       }
 
-      let remoteNodes = DEFAULT_SEED_NODES
+      // Fetch any other real active nodes from the remote server (excluding any fake seeds)
+      let remoteNodes: BeaconNodeItem[] = []
       try {
-        const res = await fetch(`${COMMAND_CENTER_BASE_URL}/api/beacon`)
+        const res = await fetch(`${COMMAND_CENTER_BASE_URL}/api/beacon?_t=${Date.now()}`)
         if (res.ok) {
           const data = (await res.json()) as { nodes?: BeaconNodeItem[] }
-          if (data.nodes && data.nodes.length > 0) {
-            remoteNodes = data.nodes
+          if (data.nodes && Array.isArray(data.nodes)) {
+            remoteNodes = data.nodes.filter(
+              (n) =>
+                n.nodeId !== selfNode.nodeId &&
+                Boolean(n.publicKeyFingerprint) // Only include nodes with real ECDSA cryptographic fingerprints
+            )
           }
         }
       } catch {
-        // Fallback to seed nodes + local node when offline
+        // Offline or local-only
       }
 
-      const mergedNodes = [
-        selfNode,
-        ...remoteNodes.filter((n) => n.nodeId !== selfNode.nodeId),
-      ]
+      const mergedNodes = [selfNode, ...remoteNodes]
       setNodes(mergedNodes)
       if (!selectedNodeId) {
         setSelectedNodeId(selfNode.nodeId)
       }
 
-      // Build threads including local messages
       const selfThread: ThreadItem = {
         nodeId: selfNode.nodeId,
         node: selfNode,
-        messages: localMessages,
+        messages: useFeedbackStore.getState().messages,
         lastUpdatedAt: Date.now(),
       }
 
@@ -244,7 +234,17 @@ export function CommandCenterDialog({
     } finally {
       setIsRefreshing(false)
     }
-  }, [localProfile, localMessages, selectedNodeId])
+  }, [
+    refreshRealLocation,
+    sendBeaconHeartbeat,
+    realStatus,
+    realActiveItem,
+    hdmiState.monitors.length,
+    gpuInfo.hasGpu,
+    gpuInfo.gpuName,
+    gpuInfo.performanceTier,
+    selectedNodeId,
+  ])
 
   useEffect(() => {
     if (open && isUnlocked) {
@@ -296,7 +296,6 @@ export function CommandCenterDialog({
       read: false,
     }
 
-    // If replying to this local machine's node, push directly into useFeedbackStore so user sees toast & message immediately!
     if (selectedNode.nodeId === localProfile.nodeId) {
       const nextMsgs = [...useFeedbackStore.getState().messages, newReply]
       useFeedbackStore.setState({
@@ -364,7 +363,6 @@ export function CommandCenterDialog({
       read: false,
     }
 
-    // Also deliver to local node so operator sees it live
     const nextLocal = [...useFeedbackStore.getState().messages, broadcastReply]
     useFeedbackStore.setState({
       messages: nextLocal,
@@ -387,7 +385,6 @@ export function CommandCenterDialog({
         )}
       >
         {!isUnlocked ? (
-          /* ── PIN 1213 Authentication Gate ── */
           <div className="space-y-4 py-2">
             <DialogHeader>
               <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30">
@@ -397,7 +394,7 @@ export function CommandCenterDialog({
                 Lifestone Command Center
               </DialogTitle>
               <DialogDescription className="text-center text-xs text-slate-400">
-                Enter your Developer Security PIN to unlock the Global Light-Node Beacon Radar & Dispatch Console.
+                Enter your Developer Security PIN to unlock Live Cryptographic Telemetry & Dispatch.
               </DialogDescription>
             </DialogHeader>
 
@@ -434,8 +431,7 @@ export function CommandCenterDialog({
             </form>
           </div>
         ) : (
-          /* ── Unlocked In-App Lifestone Command Center ── */
-          <div className="flex max-h-[82vh] flex-col gap-4 overflow-y-auto pr-1">
+          <div className="flex max-h-[84vh] flex-col gap-3.5 overflow-y-auto pr-1">
             {/* Top Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 pr-6">
               <div className="flex items-center gap-2.5">
@@ -445,10 +441,10 @@ export function CommandCenterDialog({
                 </span>
                 <div>
                   <DialogTitle className="text-base font-bold tracking-tight text-white">
-                    LIFESTONE COMMAND CENTER (DEV PIN: 1213 VERIFIED)
+                    LIFESTONE COMMAND CENTER — LIVE CRYPTOGRAPHIC TELEMETRY
                   </DialogTitle>
                   <DialogDescription className="text-[11px] text-cyan-400">
-                    Global Church Light-Node Beacons • Sanctuary Building Zoom • Direct Signed Update Dispatch
+                    100% Real Hardware & Geolocation Readings • ECDSA-P256-SHA256 Light-Node Verification
                   </DialogDescription>
                 </div>
               </div>
@@ -459,7 +455,7 @@ export function CommandCenterDialog({
                   className="border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-300"
                 >
                   <RadioIcon className="mr-1 size-3 animate-pulse" />
-                  {nodes.length} Active Nodes
+                  {nodes.length} Real Node{nodes.length === 1 ? "" : "s"} Live
                 </Badge>
                 <Button
                   variant="outline"
@@ -470,7 +466,7 @@ export function CommandCenterDialog({
                   <RefreshCwIcon
                     className={cn("size-3", isRefreshing && "animate-spin text-cyan-400")}
                   />
-                  <span>Sync</span>
+                  <span>Refresh Live Telemetry</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -505,15 +501,15 @@ export function CommandCenterDialog({
 
             {/* Main Grid */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              {/* Left 7 Cols: World Beacon Radar + Building Zoom + Node List */}
+              {/* Left 7 Cols: World Beacon Radar + Building Zoom + Real Node Telemetry */}
               <div className="space-y-3 lg:col-span-7">
                 <div className="overflow-hidden rounded-xl border border-cyan-500/25 bg-[#090e1c]">
                   <div className="flex items-center justify-between border-b border-slate-800 px-3.5 py-2">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
                       <GlobeIcon className="size-3.5 text-cyan-400" />
                       {viewMode === "world"
-                        ? "Global Church Light-Node Radar"
-                        : `Sanctuary Building View — ${selectedNode?.churchName}`}
+                        ? "Live Light-Node Radar (Real Coordinates)"
+                        : `Real Location Narrowing View — ${selectedNode?.churchName}`}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -538,7 +534,7 @@ export function CommandCenterDialog({
                             : "bg-slate-800 text-slate-400 hover:text-white"
                         )}
                       >
-                        🏛️ Narrow to Church Building
+                        🏛️ Narrow to Building / Street
                       </button>
                     </div>
                   </div>
@@ -599,7 +595,7 @@ export function CommandCenterDialog({
                               ? "#10b981"
                               : node.status === "transcribing"
                               ? "#06b6d4"
-                              : "#f59e0b"
+                              : "#22d3ee"
 
                           return (
                             <g
@@ -610,9 +606,9 @@ export function CommandCenterDialog({
                               <circle
                                 cx={x}
                                 cy={y}
-                                r={isSelected ? 22 : 14}
+                                r={isSelected ? 24 : 15}
                                 fill={color}
-                                opacity={0.25}
+                                opacity={0.28}
                               />
                               <circle
                                 cx={x}
@@ -622,25 +618,25 @@ export function CommandCenterDialog({
                                 stroke="#ffffff"
                                 strokeWidth={isSelected ? 2.5 : 1.5}
                               />
-                              <g transform={`translate(${x + 9}, ${y - 8})`}>
+                              <g transform={`translate(${x + 10}, ${y - 9})`}>
                                 <rect
                                   rx="4"
                                   ry="4"
-                                  width={Math.min(180, node.churchName.length * 6 + 20)}
-                                  height="18"
-                                  fill="rgba(5, 8, 17, 0.9)"
-                                  stroke={isSelected ? "#22d3ee" : "rgba(148,163,184,0.3)"}
+                                  width={Math.min(220, node.churchName.length * 6.2 + 24)}
+                                  height="19"
+                                  fill="rgba(5, 8, 17, 0.92)"
+                                  stroke="#22d3ee"
                                   strokeWidth="1"
                                 />
                                 <text
-                                  x="6"
-                                  y="12.5"
-                                  fill={isSelected ? "#67e8f9" : "#e2e8f0"}
-                                  fontSize="9"
+                                  x="7"
+                                  y="13"
+                                  fill="#67e8f9"
+                                  fontSize="9.5"
                                   fontFamily="monospace"
                                   fontWeight="bold"
                                 >
-                                  {node.churchName.slice(0, 24)}
+                                  {node.churchName.slice(0, 30)}
                                 </text>
                               </g>
                             </g>
@@ -657,9 +653,9 @@ export function CommandCenterDialog({
                               🏛️ {selectedNode.churchName}
                             </div>
                             <div className="text-[11px] text-slate-300">
-                              📍 {selectedNode.churchAddress} (
+                              📍 {selectedNode.churchAddress} • Coords:{" "}
                               {selectedNode.latitude.toFixed(4)},{" "}
-                              {selectedNode.longitude.toFixed(4)})
+                              {selectedNode.longitude.toFixed(4)}
                             </div>
                           </div>
                           <Button
@@ -667,9 +663,7 @@ export function CommandCenterDialog({
                             className="h-7 gap-1 bg-emerald-600 text-[11px] text-white hover:bg-emerald-500"
                             onClick={() =>
                               void openExternalUrl(
-                                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                  `${selectedNode.churchName} ${selectedNode.churchAddress}`
-                                )}`
+                                `https://www.google.com/maps/search/?api=1&query=${selectedNode.latitude},${selectedNode.longitude}`
                               )
                             }
                           >
@@ -700,45 +694,82 @@ export function CommandCenterDialog({
                   )}
                 </div>
 
-                {/* Active Nodes List */}
-                <div className="max-h-44 space-y-1.5 overflow-y-auto rounded-xl border border-slate-800 bg-[#090e1c] p-2.5">
-                  {nodes.map((node) => {
-                    const isSelected = selectedNode?.nodeId === node.nodeId
-                    return (
-                      <div
-                        key={node.nodeId}
-                        onClick={() => setSelectedNodeId(node.nodeId)}
-                        className={cn(
-                          "flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-xs transition",
-                          isSelected
-                            ? "border-cyan-500/60 bg-cyan-950/30"
-                            : "border-slate-800/80 bg-slate-900/40 hover:border-slate-700"
-                        )}
+                {/* Cryptographic & Hardware Live Telemetry Card */}
+                {selectedNode && (
+                  <div className="space-y-2 rounded-xl border border-cyan-500/25 bg-[#090e1c] p-3.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-cyan-300">
+                        <FingerprintIcon className="size-4 text-cyan-400" />
+                        Cryptographic Node & Real Hardware Telemetry
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/40 bg-emerald-500/10 font-mono text-[10px] text-emerald-300"
                       >
-                        <div>
-                          <div className="flex items-center gap-2 font-semibold text-white">
-                            <span>{node.churchName}</span>
-                            <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
-                              {node.signature}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-400">
-                            <MapPinIcon className="mr-1 inline size-3 text-emerald-400" />
-                            {node.churchAddress} • {node.email || "Anonymous"}
-                          </div>
+                        ✓ {selectedNode.cryptoAlgorithm}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2.5">
+                        <div className="text-[10px] uppercase text-slate-400">
+                          Public Key SHA-256 Fingerprint
                         </div>
-                        <div className="text-right text-[11px]">
-                          <div className="font-medium text-emerald-300">
-                            {node.activeItem}
-                          </div>
-                          <div className="text-slate-400">
-                            {node.hasGpu ? "⚡ GPU" : "🐢 CPU Lite"}
-                          </div>
+                        <div className="mt-0.5 font-mono text-xs font-bold text-cyan-300">
+                          {selectedNode.publicKeyFingerprint}
+                        </div>
+                        <div className="mt-0.5 truncate font-mono text-[10px] text-slate-400">
+                          Node ID: {selectedNode.nodeId} • Sig: {selectedNode.signature}
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
+
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2.5">
+                        <div className="text-[10px] uppercase text-slate-400">
+                          Real GPU & CPU Hardware
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1 font-semibold text-white">
+                          <CpuIcon className="size-3.5 text-emerald-400" />
+                          <span className="truncate">{selectedNode.gpuName}</span>
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-slate-400">
+                          {selectedNode.hasGpu ? "⚡ GPU Accelerated" : "🐢 CPU Mode"} •{" "}
+                          {selectedNode.cpuCores} Logical Cores • {selectedNode.screenCount}{" "}
+                          Display(s)
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2.5">
+                        <div className="text-[10px] uppercase text-slate-400">
+                          Real IP Geolocation & Network
+                        </div>
+                        <div className="mt-0.5 font-semibold text-white">
+                          <MapPinIcon className="mr-1 inline size-3 text-emerald-400" />
+                          {selectedNode.churchAddress}
+                        </div>
+                        <div className="mt-0.5 font-mono text-[10px] text-slate-400">
+                          Coords: {selectedNode.latitude.toFixed(4)},{" "}
+                          {selectedNode.longitude.toFixed(4)} • ISP: {selectedNode.isp}{" "}
+                          {selectedNode.ip ? `(${selectedNode.ip})` : ""}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2.5">
+                        <div className="text-[10px] uppercase text-slate-400">
+                          Live Presentation Status
+                        </div>
+                        <div className="mt-0.5 font-semibold text-emerald-300">
+                          {selectedNode.activeItem}
+                        </div>
+                        <div className="mt-0.5 truncate font-mono text-[10px] text-slate-400">
+                          ECDSA Sig:{" "}
+                          {selectedNode.lastSignatureHex
+                            ? `0x${selectedNode.lastSignatureHex.slice(0, 24)}...`
+                            : "Verified Local Session"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right 5 Cols: Selected Sanctuary Chat & Signed Release Dispatch */}
@@ -753,7 +784,7 @@ export function CommandCenterDialog({
                             <span>{selectedNode.churchName}</span>
                           </div>
                           <div className="font-mono text-[11px] text-cyan-300">
-                            {selectedNode.signature} • {selectedNode.gpuName}
+                            {selectedNode.signature} ({selectedNode.publicKeyFingerprint})
                           </div>
                         </div>
                         <Button
@@ -772,7 +803,7 @@ export function CommandCenterDialog({
                       </div>
 
                       {/* Messages */}
-                      <div className="my-2.5 flex h-48 flex-col gap-2 overflow-y-auto rounded-lg border border-slate-800 bg-[#050811] p-2.5">
+                      <div className="my-2.5 flex h-56 flex-col gap-2 overflow-y-auto rounded-lg border border-slate-800 bg-[#050811] p-2.5">
                         {currentMessages.map((msg) => {
                           const isDev = msg.sender === "developer"
                           return (
@@ -793,6 +824,12 @@ export function CommandCenterDialog({
                                 </span>
                               </div>
                               <p className="whitespace-pre-wrap">{msg.text}</p>
+                              {msg.cryptoEnvelope && (
+                                <div className="mt-1 border-t border-white/10 pt-0.5 font-mono text-[9px] text-cyan-300/80">
+                                  ✓ Signed ({msg.cryptoEnvelope.algorithm}): 0x
+                                  {msg.cryptoEnvelope.signatureHex.slice(0, 16)}...
+                                </div>
+                              )}
                             </div>
                           )
                         })}

@@ -1,6 +1,12 @@
 import { create } from "zustand"
 import { toast } from "sonner"
 import { detectGpuSpecs } from "@/hooks/use-gpu-info"
+import {
+  getOrCreateCryptoIdentity,
+  signNodePayload,
+  fetchRealMachineLocation,
+  type SignedPayloadEnvelope,
+} from "@/lib/crypto-node"
 
 const COMMAND_CENTER_BASE_URL =
   import.meta.env.VITE_COMMAND_CENTER_URL || "https://lifestone-church-ai.vercel.app"
@@ -15,6 +21,7 @@ export interface NodeDiagnostics {
   performanceTier: string
   os: string
   screenCount: number
+  cpuCores?: number
 }
 
 export interface FeedbackMessage {
@@ -28,6 +35,7 @@ export interface FeedbackMessage {
   isUpdateNotice?: boolean
   releaseVersion?: string
   diagnostics?: NodeDiagnostics
+  cryptoEnvelope?: SignedPayloadEnvelope
   timestamp: number
   read?: boolean
 }
@@ -35,12 +43,19 @@ export interface FeedbackMessage {
 export interface NodeProfile {
   nodeId: string
   signature: string
+  publicKeyFingerprint: string
+  publicKeyHex: string
+  cryptoAlgorithm: "ECDSA-P256-SHA256"
+  lastSignatureHex?: string
   email: string
   displayName: string
   churchName: string
   churchAddress: string
   city: string
+  region: string
   country: string
+  isp: string
+  ip: string
   latitude?: number
   longitude?: number
   isAuthenticated: boolean
@@ -68,7 +83,14 @@ interface FeedbackState {
     country?: string
   }) => void
   signOut: () => void
-  updateLocation: (coords: { latitude: number; longitude: number; address?: string }) => void
+  updateLocation: (coords: {
+    latitude: number
+    longitude: number
+    address?: string
+    city?: string
+    country?: string
+  }) => void
+  refreshRealLocation: () => Promise<void>
   sendMessage: (
     text: string,
     category?: FeedbackMessage["category"],
@@ -88,11 +110,12 @@ interface FeedbackState {
 /** Generate a deterministic, human-readable Digital Signature for a church/user node */
 export function generateDigitalSignature(email: string, churchName: string, nodeId: string): string {
   const cleanEmail = email.trim().toLowerCase()
-  const cleanChurch = churchName
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 6) || "CHURCH"
+  const cleanChurch =
+    churchName
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6) || "CHURCH"
 
   let hash = 2166136261
   const input = `${cleanEmail}:${churchName}:${nodeId}`
@@ -109,7 +132,7 @@ function getOrCreateNodeId(): string {
     if (typeof localStorage !== "undefined") {
       const existing = localStorage.getItem("lifestone_Install_node_id")
       if (existing) return existing
-      const randomHex = Array.from({ length: 6 }, () =>
+      const randomHex = Array.from({ length: 8 }, () =>
         Math.floor(Math.random() * 16)
           .toString(16)
           .toUpperCase()
@@ -121,7 +144,7 @@ function getOrCreateNodeId(): string {
   } catch {
     // Fallback
   }
-  return "LS-NODE-LOCAL01"
+  return "LS-NODE-LOCAL001"
 }
 
 function loadProfile(): NodeProfile {
@@ -131,7 +154,16 @@ function loadProfile(): NodeProfile {
       const raw = localStorage.getItem(STORAGE_PROFILE_KEY)
       if (raw) {
         const parsed = JSON.parse(raw) as NodeProfile
-        return { ...parsed, nodeId: parsed.nodeId || nodeId }
+        return {
+          ...parsed,
+          nodeId: parsed.nodeId || nodeId,
+          cryptoAlgorithm: "ECDSA-P256-SHA256",
+          publicKeyFingerprint: parsed.publicKeyFingerprint || "",
+          publicKeyHex: parsed.publicKeyHex || "",
+          region: parsed.region || "",
+          isp: parsed.isp || "",
+          ip: parsed.ip || "",
+        }
       }
     }
   } catch {
@@ -140,12 +172,18 @@ function loadProfile(): NodeProfile {
   return {
     nodeId,
     signature: `LS-ANON-${nodeId.slice(-4)}`,
+    publicKeyFingerprint: "",
+    publicKeyHex: "",
+    cryptoAlgorithm: "ECDSA-P256-SHA256",
     email: "",
     displayName: "",
     churchName: "",
     churchAddress: "",
     city: "",
+    region: "",
     country: "",
+    isp: "",
+    ip: "",
     isAuthenticated: false,
     createdAt: Date.now(),
   }
@@ -174,7 +212,6 @@ function loadMessages(nodeId: string, signature: string): FeedbackMessage[] {
     // ignore
   }
 
-  // Default welcome message from Lifestone Command Center
   return [
     {
       id: "welcome-msg-1",
@@ -182,7 +219,7 @@ function loadMessages(nodeId: string, signature: string): FeedbackMessage[] {
       signature,
       sender: "developer",
       senderName: "Lifestone Command Center",
-      text: "Welcome to Lifestone Direct Line! Sign in with your Gmail & Church name to get your unique Lifestone Digital Signature. You can message us directly here for features, bug fixes, or custom signed updates for your sanctuary.",
+      text: "Welcome to Lifestone Direct Line! Your app runs an ECDSA-P256-SHA256 cryptographic light-node. Sign in with your Gmail & Sanctuary name to bind your Church Digital Signature and chat directly with us.",
       category: "update-notice",
       timestamp: Date.now() - 60_000,
       read: true,
@@ -217,7 +254,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     set({ isDialogOpen: open })
     if (open) {
       get().markAllRead()
-      void get().syncWithCommandCenter( true)
+      void get().syncWithCommandCenter(true)
     }
   },
 
@@ -235,15 +272,14 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
       email: email.trim(),
       displayName: displayName.trim() || email.split("@")[0] || "Media Lead",
       churchName: churchName.trim() || "Lifestone Sanctuary",
-      churchAddress: churchAddress.trim(),
-      city: city.trim(),
-      country: country.trim(),
+      churchAddress: churchAddress.trim() || current.churchAddress,
+      city: city.trim() || current.city,
+      country: country.trim() || current.country,
       signature,
       isAuthenticated: true,
     }
     saveProfile(nextProfile)
 
-    // Add system confirmation message in chat
     const existing = get().messages
     const hasAuthMsg = existing.some((m) => m.id.startsWith("sig-issued-"))
     let nextMessages = existing
@@ -254,7 +290,9 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
         signature: nextProfile.signature,
         sender: "developer",
         senderName: "Lifestone Command Center",
-        text: `Digital Signature [${nextProfile.signature}] assigned to ${nextProfile.churchName} (${nextProfile.email}). Your church light-node beacon is now active on the Lifestone Global Command Center map!`,
+        text: `Cryptographic Digital Signature [${nextProfile.signature}] bound to ECDSA P-256 key (${
+          nextProfile.publicKeyFingerprint || "active"
+        }) for ${nextProfile.churchName} (${nextProfile.email}).`,
         category: "update-notice",
         timestamp: Date.now(),
         read: get().isDialogOpen,
@@ -270,10 +308,9 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     })
 
     toast.success(`Signed in as ${nextProfile.churchName}`, {
-      description: `Digital Signature: ${nextProfile.signature}`,
+      description: `Cryptographic Signature: ${nextProfile.signature}`,
     })
 
-    // Immediately fire beacon heartbeat with authenticated church identity
     void get().sendBeaconHeartbeat({ status: "online" })
   },
 
@@ -287,17 +324,43 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     set({ profile: resetProfile })
   },
 
-  updateLocation: ({ latitude, longitude, address }) => {
+  updateLocation: ({ latitude, longitude, address, city, country }) => {
     const current = get().profile
     const updated: NodeProfile = {
       ...current,
       latitude,
       longitude,
       churchAddress: address !== undefined ? address : current.churchAddress,
+      city: city !== undefined ? city : current.city,
+      country: country !== undefined ? country : current.country,
     }
     saveProfile(updated)
     set({ profile: updated })
     void get().sendBeaconHeartbeat({ status: "online" })
+  },
+
+  refreshRealLocation: async () => {
+    const geo = await fetchRealMachineLocation()
+    if (!geo) return
+
+    const current = get().profile
+    const autoAddress =
+      current.churchAddress ||
+      [geo.city, geo.region, geo.country].filter(Boolean).join(", ")
+
+    const updated: NodeProfile = {
+      ...current,
+      latitude: current.latitude ?? geo.latitude,
+      longitude: current.longitude ?? geo.longitude,
+      city: current.city || geo.city,
+      region: geo.region,
+      country: current.country || geo.country,
+      isp: geo.isp,
+      ip: geo.ip,
+      churchAddress: autoAddress,
+    }
+    saveProfile(updated)
+    set({ profile: updated })
   },
 
   sendMessage: async (text, category = "feature", includeDiagnostics = true, screenCount = 1) => {
@@ -316,8 +379,18 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
           performanceTier: gpu.performanceTier,
           os: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 64) : "Windows x64",
           screenCount,
+          cpuCores:
+            typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4,
         }
       : undefined
+
+    // Cryptographically sign the message payload with ECDSA-P256-SHA256
+    let cryptoEnvelope: SignedPayloadEnvelope | undefined
+    try {
+      cryptoEnvelope = await signNodePayload(`MSG:${profile.signature}:${cleanText}`)
+    } catch {
+      // Fallback if SubtleCrypto unavailable in test runner
+    }
 
     const newMsg: FeedbackMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -328,6 +401,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
       text: cleanText,
       category,
       diagnostics,
+      cryptoEnvelope,
       timestamp: Date.now(),
       read: true,
     }
@@ -336,7 +410,6 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     saveMessages(updatedMessages)
     set({ messages: updatedMessages })
 
-    // Attempt to push to Lifestone Command Center API
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 7000)
@@ -345,7 +418,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "send_feedback",
-          profile,
+          profile: get().profile,
           message: newMsg,
         }),
         signal: controller.signal,
@@ -412,7 +485,6 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
             const unreadCount = merged.filter((m) => m.sender === "developer" && !m.read).length
             set({ messages: merged, unreadCount })
 
-            // Notify user with toast for the latest developer message!
             const latest = marked[marked.length - 1]
             if (latest) {
               if (latest.isUpdateNotice) {
@@ -439,7 +511,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
         }
       }
     } catch {
-      // Offline or unreachable — non-fatal
+      // Offline or unreachable
     } finally {
       set({ isSyncing: false })
     }
@@ -451,8 +523,31 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
       return
     }
 
-    const { profile } = get()
     const gpu = detectGpuSpecs()
+
+    // Ensure cryptographic identity is initialized
+    let currentProfile = get().profile
+    try {
+      const cryptoId = await getOrCreateCryptoIdentity()
+      const envelope = await signNodePayload(
+        `BEACON:${cryptoId.nodeId}:${statusInfo?.status || "online"}`
+      )
+      currentProfile = {
+        ...currentProfile,
+        nodeId: cryptoId.nodeId,
+        publicKeyFingerprint: cryptoId.publicKeyFingerprint,
+        publicKeyHex: cryptoId.publicKeyHex,
+        cryptoAlgorithm: "ECDSA-P256-SHA256",
+        lastSignatureHex: envelope.signatureHex,
+        signature: currentProfile.isAuthenticated
+          ? currentProfile.signature
+          : `LS-SIG-${cryptoId.publicKeyFingerprint.slice(2, 8)}`,
+      }
+      saveProfile(currentProfile)
+      set({ profile: currentProfile })
+    } catch {
+      // Fallback if WebCrypto unavailable
+    }
 
     try {
       const controller = new AbortController()
@@ -461,22 +556,29 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nodeId: profile.nodeId,
-          signature: profile.signature,
-          churchName: profile.churchName || "Anonymous Sanctuary Node",
-          displayName: profile.displayName || "Media Operator",
-          email: profile.email,
-          churchAddress: profile.churchAddress,
-          city: profile.city,
-          country: profile.country,
-          latitude: profile.latitude,
-          longitude: profile.longitude,
+          nodeId: currentProfile.nodeId,
+          signature: currentProfile.signature,
+          publicKeyFingerprint: currentProfile.publicKeyFingerprint,
+          publicKeyHex: currentProfile.publicKeyHex,
+          cryptoAlgorithm: currentProfile.cryptoAlgorithm,
+          lastSignatureHex: currentProfile.lastSignatureHex,
+          churchName: currentProfile.churchName || "Live Lifestone Desktop Node",
+          displayName: currentProfile.displayName || "Desktop Operator",
+          email: currentProfile.email,
+          churchAddress: currentProfile.churchAddress,
+          city: currentProfile.city,
+          region: currentProfile.region,
+          country: currentProfile.country,
+          isp: currentProfile.isp,
+          ip: currentProfile.ip,
+          latitude: currentProfile.latitude,
+          longitude: currentProfile.longitude,
           appVersion: "1.1.0",
           hasGpu: gpu.hasGpu,
           gpuName: gpu.gpuName,
           performanceTier: gpu.performanceTier,
           status: statusInfo?.status || "online",
-          activeItem: statusInfo?.activeItem || "Standby",
+          activeItem: statusInfo?.activeItem || "Live Ready",
           screenCount: statusInfo?.screenCount || 1,
           timestamp: Date.now(),
         }),
@@ -485,15 +587,42 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
       clearTimeout(timeout)
       set({ lastBeaconAt: Date.now(), isOnline: true })
     } catch {
-      // Non-fatal; church presentation continues 100% offline
+      set({ lastBeaconAt: Date.now() })
     }
   },
 
   init: () => {
     if (typeof window === "undefined") return
 
+    // 1. Initialize ECDSA-P256-SHA256 keypair and real IP geolocation immediately
+    void (async () => {
+      try {
+        const cryptoId = await getOrCreateCryptoIdentity()
+        const current = get().profile
+        const next: NodeProfile = {
+          ...current,
+          nodeId: cryptoId.nodeId,
+          publicKeyFingerprint: cryptoId.publicKeyFingerprint,
+          publicKeyHex: cryptoId.publicKeyHex,
+          cryptoAlgorithm: "ECDSA-P256-SHA256",
+          signature: current.isAuthenticated
+            ? current.signature
+            : `LS-SIG-${cryptoId.publicKeyFingerprint.slice(2, 8)}`,
+        }
+        saveProfile(next)
+        set({ profile: next })
+      } catch {
+        // ignore
+      }
+
+      await get().refreshRealLocation()
+      await get().sendBeaconHeartbeat({ status: "online" })
+      await get().syncWithCommandCenter(true)
+    })()
+
     const handleOnline = () => {
       set({ isOnline: true })
+      void get().refreshRealLocation()
       void get().sendBeaconHeartbeat({ status: "online" })
       void get().syncWithCommandCenter(true)
     }
@@ -504,13 +633,6 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
 
-    // Initial beacon heartbeat and message sync shortly after startup
-    setTimeout(() => {
-      void get().sendBeaconHeartbeat({ status: "online" })
-      void get().syncWithCommandCenter(true)
-    }, 3000)
-
-    // Periodic heartbeat every 2 minutes to keep light-node live on Command Center map
     setInterval(() => {
       void get().sendBeaconHeartbeat({ status: "online" })
       void get().syncWithCommandCenter(true)
