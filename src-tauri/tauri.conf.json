@@ -34,13 +34,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:5173 https://localhost; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost tauri: data: blob:; media-src 'self' asset: https://asset.localhost tauri: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost 'self' asset: https://asset.localhost tauri: http://localhost:5173 ws://localhost:5173 https://api.github.com https://github.com; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
+      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:5173 https://localhost https://*.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://*.googleapis.com; img-src 'self' asset: https://asset.localhost tauri: data: blob: https://*.google.com https://*.googleapis.com https://*.gstatic.com https://*.openstreetmap.org; media-src 'self' asset: https://asset.localhost tauri: blob:; font-src 'self' data: https://*.gstatic.com; connect-src ipc: http://ipc.localhost 'self' asset: https://asset.localhost tauri: http://localhost:5173 ws://localhost:5173 https://api.github.com https://github.com https://ipwho.is https://ipapi.co https://lifestone-church-ai.vercel.app https://*.google.com https://*.googleapis.com; worker-src 'self' blob:; frame-src 'self' https://maps.google.com https://www.google.com https://*.google.com https://www.openstreetmap.org; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
     }
   },
   "bundle": {
     "active": true,
-    "publisher": "Lifestone Church AI",
-    "copyright": "Copyright © Lifestone Church AI",
+    "publisher": "WHITE HORSE media",
+    "copyright": "Copyright © WHITE HORSE media",
     "homepage": "https://lifestone-church-ai.vercel.app",
     "targets": [
       "nsis",
