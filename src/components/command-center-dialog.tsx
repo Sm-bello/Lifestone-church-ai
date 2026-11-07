@@ -142,7 +142,7 @@ export function CommandCenterDialog({
   // Chat & release composer state
   const [replyText, setReplyText] = useState("")
   const [isUpdateNotice, setIsUpdateNotice] = useState(false)
-  const [releaseVersion, setReleaseVersion] = useState("1.1.0")
+  const [releaseVersion, setReleaseVersion] = useState("1.1.1")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusBanner, setStatusBanner] = useState<string | null>(null)
 
@@ -206,7 +206,7 @@ export function CommandCenterDialog({
         ip: freshProfile.ip || "",
         latitude: lat,
         longitude: lng,
-        appVersion: "1.1.0",
+        appVersion: "1.1.1",
         osPlatform: osInfo.label,
         hasGpu: gpuInfo.hasGpu,
         gpuName: gpuInfo.gpuName,

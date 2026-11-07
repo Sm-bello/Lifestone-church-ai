@@ -375,7 +375,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     const osInfo = detectMachineOs()
     const diagnostics: NodeDiagnostics | undefined = includeDiagnostics
       ? {
-          appVersion: "1.1.0",
+          appVersion: "1.1.1",
           gpuName: gpu.gpuName,
           hasGpu: gpu.hasGpu,
           performanceTier: gpu.performanceTier,
@@ -575,7 +575,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
           ip: currentProfile.ip,
           latitude: currentProfile.latitude,
           longitude: currentProfile.longitude,
-          appVersion: "1.1.0",
+          appVersion: "1.1.1",
           osPlatform: detectMachineOs().label,
           hasGpu: gpu.hasGpu,
           gpuName: gpu.gpuName,

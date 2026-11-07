@@ -188,7 +188,7 @@ export function FeedbackDialog({ screenCount = 1 }: { screenCount?: number }) {
                       : osInfo.platform === "Linux"
                       ? "🐧 Linux"
                       : "🪟 Windows"}{" "}
-                    • v1.1.0
+                    • v1.1.1
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm text-slate-300">
@@ -566,7 +566,7 @@ export function FeedbackDialog({ screenCount = 1 }: { screenCount?: number }) {
                       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-3">
                         <div>
                           <div className="text-sm font-bold text-emerald-300">
-                            ✅ Custom Signed Release Ready (v{msg.releaseVersion || "1.1.0"})
+                            ✅ Custom Signed Release Ready (v{msg.releaseVersion || "1.1.1"})
                           </div>
                           <div className="text-xs text-emerald-200/80">
                             Certified for Windows &amp; macOS Sanctuary Systems

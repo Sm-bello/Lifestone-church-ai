@@ -20,19 +20,19 @@ import { usePlatform, type Platform } from "../../_lib/use-platform";
 import { SITE } from "../../_lib/site";
 import { cn } from "../../_lib/utils";
 
-export const CURRENT_VERSION = "v1.1.0";
+export const CURRENT_VERSION = "v1.1.1";
 
 export const DEFAULT_URLS: Record<"windows" | "windowsLite" | "mac" | "linux" | "other", string> = {
   windows:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
   windowsLite:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone.Lite_1.1.0_x64-setup.exe",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone.Lite_1.1.1_x64-setup.exe",
   mac:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_aarch64.dmg",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_aarch64.dmg",
   linux:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_amd64.deb",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_amd64.deb",
   other:
-    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
+    "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
 };
 
 // Direct browser download trigger via invisible anchor (pops up native download manager immediately without page navigation)

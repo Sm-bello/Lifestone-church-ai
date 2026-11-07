@@ -47,10 +47,10 @@ export function StructuredData() {
         applicationCategory: "MultimediaApplication",
         operatingSystem: SITE.operatingSystems.join(", "),
         downloadUrl:
-          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
+          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
         installUrl:
-          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.0/Lifestone_1.1.0_x64-setup.exe",
-        softwareVersion: "1.1.0",
+          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
+        softwareVersion: "1.1.1",
         license: "https://opensource.org/licenses/MIT",
         isAccessibleForFree: true,
         offers: {
