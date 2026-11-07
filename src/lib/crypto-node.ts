@@ -195,6 +195,44 @@ export async function verifyNodePayload(
 }
 
 /**
+ * Detect the real host operating system and architecture for cross-platform
+ * telemetry and keyboard shortcuts (Windows, macOS, Linux).
+ */
+export interface MachineOsInfo {
+  platform: "macOS" | "Windows" | "Linux"
+  label: string
+  sendShortcut: string
+}
+
+export function detectMachineOs(): MachineOsInfo {
+  if (typeof navigator === "undefined") {
+    return { platform: "Windows", label: "Windows Desktop", sendShortcut: "Ctrl + Enter" }
+  }
+  const ua = (navigator.userAgent || "").toLowerCase()
+  const plat = (navigator.platform || "").toLowerCase()
+
+  if (ua.includes("mac") || plat.includes("mac")) {
+    return {
+      platform: "macOS",
+      label: ua.includes("arm") || ua.includes("apple") ? "macOS (Apple Silicon / Universal)" : "macOS Desktop",
+      sendShortcut: "⌘ + Enter",
+    }
+  }
+  if (ua.includes("linux") || plat.includes("linux")) {
+    return {
+      platform: "Linux",
+      label: "Linux Desktop (x86_64)",
+      sendShortcut: "Ctrl + Enter",
+    }
+  }
+  return {
+    platform: "Windows",
+    label: "Windows Desktop (x64)",
+    sendShortcut: "Ctrl + Enter",
+  }
+}
+
+/**
  * Resolve real geographic location of this PC using live IP Geolocation APIs.
  */
 export interface RealGeoLocation {

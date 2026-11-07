@@ -5,6 +5,7 @@ import {
   getOrCreateCryptoIdentity,
   signNodePayload,
   fetchRealMachineLocation,
+  detectMachineOs,
   type SignedPayloadEnvelope,
 } from "@/lib/crypto-node"
 
@@ -371,13 +372,14 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
     set({ isSending: true })
 
     const gpu = detectGpuSpecs()
+    const osInfo = detectMachineOs()
     const diagnostics: NodeDiagnostics | undefined = includeDiagnostics
       ? {
           appVersion: "1.1.0",
           gpuName: gpu.gpuName,
           hasGpu: gpu.hasGpu,
           performanceTier: gpu.performanceTier,
-          os: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 64) : "Windows x64",
+          os: osInfo.label,
           screenCount,
           cpuCores:
             typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4,
@@ -574,6 +576,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
           latitude: currentProfile.latitude,
           longitude: currentProfile.longitude,
           appVersion: "1.1.0",
+          osPlatform: detectMachineOs().label,
           hasGpu: gpu.hasGpu,
           gpuName: gpu.gpuName,
           performanceTier: gpu.performanceTier,
