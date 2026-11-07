@@ -35,10 +35,10 @@ import {
 } from "@/stores"
 import { useGpuInfo } from "@/hooks/use-gpu-info"
 import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
+import { verifyDeveloperPin } from "@/lib/crypto-node"
 import { openExternalUrl } from "@/lib/open-external"
 import { cn } from "@/lib/utils"
 
-const DEVELOPER_PIN = "1213"
 const COMMAND_CENTER_BASE_URL =
   import.meta.env.VITE_COMMAND_CENTER_URL || "https://lifestone-church-ai.vercel.app"
 
@@ -252,9 +252,10 @@ export function CommandCenterDialog({
     }
   }, [open, isUnlocked, syncCommandCenterData])
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (pinInput.trim() === DEVELOPER_PIN) {
+    const valid = await verifyDeveloperPin(pinInput)
+    if (valid) {
       setIsUnlocked(true)
       setPinError(false)
       setPinInput("")
@@ -407,7 +408,7 @@ export function CommandCenterDialog({
                 <input
                   type="password"
                   autoFocus
-                  placeholder="Enter 4-digit PIN (1213)"
+                  placeholder="Enter Security PIN"
                   value={pinInput}
                   onChange={(e) => {
                     setPinInput(e.target.value)
@@ -417,7 +418,7 @@ export function CommandCenterDialog({
                 />
                 {pinError && (
                   <p className="text-center text-xs font-medium text-rose-400">
-                    Invalid Developer PIN. Please enter 1213.
+                    Invalid Developer PIN. Access denied.
                   </p>
                 )}
               </div>

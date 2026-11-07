@@ -3,9 +3,14 @@ import {
   getOrCreateCryptoIdentity,
   signNodePayload,
   verifyNodePayload,
+  verifyDeveloperPin,
 } from "./crypto-node"
 
 describe("ECDSA-P256-SHA256 Cryptographic Light-Node Engine", () => {
+  it("verifies developer PIN via salted SHA-256 hash without storing raw PIN", async () => {
+    expect(await verifyDeveloperPin("0000")).toBe(false)
+    expect(await verifyDeveloperPin("9999")).toBe(false)
+  })
   it("generates a real ECDSA P-256 keypair, signs a payload, and verifies the cryptographic signature", async () => {
     const identity = await getOrCreateCryptoIdentity()
     expect(identity.algorithm).toBe("ECDSA-P256-SHA256")

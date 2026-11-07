@@ -33,7 +33,8 @@ interface ThreadItem {
 }
 
 const LOCAL_THREADS_STORAGE_KEY = "lifestone_command_center_threads_v1";
-const DEVELOPER_PIN = "1213";
+const DEV_PIN_SALTSHA256 =
+  "22f757233717a14761147eb1e2f77785f7402450feaabb97087565e267bf856f";
 
 function latLngToSvg(lat: number, lng: number): { x: number; y: number } {
   const x = ((lng + 180) / 360) * 1000;
@@ -132,19 +133,30 @@ export default function CommandCenterPage() {
     }
   }, []);
 
-  const handleUnlockPin = (e: React.FormEvent) => {
+  const handleUnlockPin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput.trim() === DEVELOPER_PIN) {
-      setIsUnlocked(true);
-      setPinError(false);
-      try {
-        sessionStorage.setItem("lifestone_web_dev_unlocked", "true");
-      } catch {
-        // ignore
+    try {
+      const encoded = new TextEncoder().encode(
+        `lifestone-command-salt-v1:${pinInput.trim()}`
+      );
+      const digestBuf = await crypto.subtle.digest("SHA-256", encoded);
+      const digestHex = Array.from(new Uint8Array(digestBuf), (b) =>
+        b.toString(16).padStart(2, "0")
+      ).join("");
+      if (digestHex === DEV_PIN_SALTSHA256) {
+        setIsUnlocked(true);
+        setPinError(false);
+        try {
+          sessionStorage.setItem("lifestone_web_dev_unlocked", "true");
+        } catch {
+          // ignore
+        }
+        return;
       }
-    } else {
-      setPinError(true);
+    } catch {
+      // ignore
     }
+    setPinError(true);
   };
 
   const fetchCommandData = useCallback(async () => {
@@ -421,7 +433,7 @@ export default function CommandCenterPage() {
               />
               {pinError && (
                 <p className="text-center text-xs font-medium text-rose-400">
-                  Invalid PIN. Please enter your developer PIN (1213).
+                  Invalid Developer PIN. Access denied.
                 </p>
               )}
             </div>

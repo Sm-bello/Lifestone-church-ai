@@ -11,7 +11,23 @@
  */
 
 const CRYPTO_KEYPAIR_STORAGE_KEY = "lifestone_ecdsa_p256_keypair_v1"
+const DEV_PIN_SALTSHA256 =
+  "22f757233717a14761147eb1e2f77785f7402450feaabb97087565e267bf856f"
 let memoryIdentityCache: StoredCryptoIdentity | null = null
+
+/**
+ * Cryptographically verify the Developer Command Center PIN using a salted SHA-256 digest.
+ * The raw PIN is never stored in source code or UI strings.
+ */
+export async function verifyDeveloperPin(pin: string): Promise<boolean> {
+  try {
+    const encoded = new TextEncoder().encode(`lifestone-command-salt-v1:${pin.trim()}`)
+    const digest = await crypto.subtle.digest("SHA-256", encoded)
+    return bufferToHex(digest) === DEV_PIN_SALTSHA256
+  } catch {
+    return false
+  }
+}
 
 export interface StoredCryptoIdentity {
   nodeId: string
