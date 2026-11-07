@@ -16,8 +16,17 @@ export const TUTORIAL_STEPS: Step[] = [
   },
   {
     ...STEP_DEFAULTS,
+    target: '[data-tour="gpu-status"]',
+    title: "🚀 Smart GPU & CPU Recognition",
+    content:
+      "Lifestone automatically checks your PC's graphics hardware on launch. If a dedicated GPU is found ('yay! there GPU lets fly'), AI runs at ultra speed. If no GPU is present on a budget PC, Lifestone switches to CPU-optimized mode so voice recognition still works reliably.",
+    placement: "bottom",
+    spotlightPadding: 4,
+  },
+  {
+    ...STEP_DEFAULTS,
     target: '[data-tour="projector-toggle"]',
-    title: "Live Projector Control",
+    title: "🖥️ Live Projector Control",
     content:
       "Launch or close the live full-screen projection window with one click. When external displays are connected, this button lights up and gives you instant control over church screens.",
     placement: "bottom",
@@ -29,6 +38,15 @@ export const TUTORIAL_STEPS: Step[] = [
     title: "🎵 Church Hymnal (2,000+ Hymns)",
     content:
       "Access over 2,000 church hymns (including Gospel Hymn Book / GHS). Search by hymn number, title, or lyric lines, preview any stanza, and project them live immediately.",
+    placement: "bottom",
+    spotlightPadding: 4,
+  },
+  {
+    ...STEP_DEFAULTS,
+    target: '[data-tour="developer-feedback"]',
+    title: "💬 Talk to the Developer (Command Center)",
+    content:
+      "Have a feature request or need help? Sign in with your Gmail to receive a unique Church Digital Signature, chat directly with the developer, light up your church beacon on the global map, and receive custom signed update notifications.",
     placement: "bottom",
     spotlightPadding: 4,
   },

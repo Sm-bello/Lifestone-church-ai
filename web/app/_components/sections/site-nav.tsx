@@ -16,6 +16,7 @@ const LINKS: ReadonlyArray<NavLink> = [
   { href: "#how-it-works", label: "How it works" },
   { href: "#pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
+  { href: "/command-center", label: "Command Center" },
   { href: "#download", label: "Download" },
   { href: "#faq", label: "FAQs" },
 ];

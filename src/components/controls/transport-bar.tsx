@@ -4,18 +4,39 @@ import { toast } from "sonner"
 import { LevelMeter } from "@/components/ui/level-meter"
 import { LiveIndicator } from "@/components/ui/live-indicator"
 import { Badge } from "@/components/ui/badge"
-import { MicIcon, PaletteIcon, CastIcon, SunIcon, MoonIcon, MonitorPlay, Music2, BellIcon } from "lucide-react"
+import {
+  MicIcon,
+  PaletteIcon,
+  CastIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorPlay,
+  Music2,
+  BellIcon,
+  MessageSquareHeartIcon,
+  ZapIcon,
+  CpuIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { HymnConsole } from "@/components/hymn-console"
 import { UpdateDialog } from "@/components/update-dialog"
+import { FeedbackDialog } from "@/components/feedback-dialog"
 import { ThemeDesigner } from "@/components/broadcast/theme-designer"
 import { BroadcastSettings } from "@/components/broadcast/broadcast-settings"
 import { HdmiProjectorBanner } from "@/components/broadcast/hdmi-projector-banner"
-import { useAudioStore, useTranscriptStore, useBroadcastStore, useHymnStore, useUpdateStore } from "@/stores"
+import {
+  useAudioStore,
+  useTranscriptStore,
+  useBroadcastStore,
+  useHymnStore,
+  useUpdateStore,
+  useFeedbackStore,
+} from "@/stores"
 import { useTutorialStore } from "@/stores/tutorial-store"
 import { useTheme } from "@/components/theme-provider"
 import { useHdmiMonitor } from "@/hooks/use-hdmi-monitor"
+import { useGpuInfo } from "@/hooks/use-gpu-info"
 import { cn } from "@/lib/utils"
 
 export function TransportBar() {
@@ -26,9 +47,15 @@ export function TransportBar() {
   const activeStanzaId = useHymnStore((s) => s.activeStanzaId)
   const hasUpdate = useUpdateStore((s) => s.hasUpdate)
   const latestRelease = useUpdateStore((s) => s.latestRelease)
+  const unreadFeedbackCount = useFeedbackStore((s) => s.unreadCount)
+  const feedbackProfile = useFeedbackStore((s) => s.profile)
+  const setFeedbackDialogOpen = useFeedbackStore((s) => s.setDialogOpen)
+
   const [broadcastOpen, setBroadcastOpen] = useState(false)
   const [projectorOpen, setProjectorOpen] = useState(false)
   const [bannerVisible, setBannerVisible] = useState(false)
+
+  const gpuInfo = useGpuInfo()
 
   const [hasSeenHymnNotification, setHasSeenHymnNotification] = useState<boolean>(() => {
     try {
@@ -47,10 +74,19 @@ export function TransportBar() {
     setHasSeenHymnNotification(true)
   }, [])
 
-  // Initialize quiet background release listener on startup
+  // Initialize quiet background release listener & Command Center light-node beacon on startup
   useEffect(() => {
     void useUpdateStore.getState().init()
+    useFeedbackStore.getState().init()
   }, [])
+
+  // Trigger instant GPU / CPU recognition toast on startup
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      gpuInfo.triggerGpuStartupToast(false)
+    }, 900)
+    return () => clearTimeout(timer)
+  }, [gpuInfo])
 
   // Flash a welcoming announcement toast on launch if not yet acknowledged
   useEffect(() => {
@@ -58,7 +94,7 @@ export function TransportBar() {
       const timer = setTimeout(() => {
         toast("🎵 Church Hymnal & HDMI Auto-Detect Are Live!", {
           description:
-            "Over 2,000 hymns ready for worship. The interactive tutorial guide has been updated with full projector & hymnal walkthroughs.",
+            "Over 2,000 hymns ready for worship. The interactive tutorial guide has been updated with full projector, GPU, and developer chat walkthroughs.",
           action: {
             label: "Take Tour",
             onClick: () => {
@@ -68,7 +104,7 @@ export function TransportBar() {
           },
           duration: 9000,
         })
-      }, 1500)
+      }, 2800)
       return () => clearTimeout(timer)
     }
   }, [hasSeenHymnNotification, dismissHymnNotification])
@@ -127,7 +163,7 @@ export function TransportBar() {
         data-slot="transport-bar"
         className="flex h-14 items-center justify-between px-3"
       >
-        {/* Left: Logo + Plan Badge */}
+        {/* Left: Logo + Plan Badge + Hardware GPU Indicator */}
         <div className="flex items-center gap-2.5">
           <span className="text-sm font-semibold tracking-tight text-foreground">
             Lifestone
@@ -135,10 +171,40 @@ export function TransportBar() {
           <Badge variant="outline" className="text-[0.5625rem] uppercase">
             Free
           </Badge>
+
+          {/* Hardware GPU / CPU Status Badge */}
+          <button
+            type="button"
+            data-tour="gpu-status"
+            onClick={() => gpuInfo.triggerGpuStartupToast(true)}
+            title={
+              gpuInfo.hasGpu
+                ? `yay! there GPU lets fly — ${gpuInfo.gpuName} (${gpuInfo.latencyHint})`
+                : `i notice there is no GPU here, well the ai voice recognition will still work but expect it to have some delay (${gpuInfo.gpuName})`
+            }
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6rem] font-medium transition-colors",
+              gpuInfo.hasGpu
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+            )}
+          >
+            {gpuInfo.hasGpu ? (
+              <>
+                <ZapIcon className="size-2.5 fill-current" />
+                <span>GPU Ready</span>
+              </>
+            ) : (
+              <>
+                <CpuIcon className="size-2.5" />
+                <span>CPU Mode</span>
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Right: Audio + Status + Projector + Settings */}
-        <div className="flex items-center gap-3">
+        {/* Right: Audio + Status + Projector + Hymnal + Talk to Developer + Settings */}
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2">
             <MicIcon className="size-3.5 text-muted-foreground" />
             <LevelMeter level={audioLevel.rms} bars={4} />
@@ -283,7 +349,34 @@ export function TransportBar() {
               />
             )}
           </div>
+
+          {/* ── Top Corner "Talk to the Developer" Button ── */}
+          <div className="relative flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              data-tour="developer-feedback"
+              onClick={() => setFeedbackDialogOpen(true)}
+              title={
+                feedbackProfile.isAuthenticated
+                  ? `Talk to the Developer (${feedbackProfile.signature})`
+                  : "Talk to the Developer — Connect with Lifestone Command Center"
+              }
+              className="h-7 gap-1.5 border-cyan-500/35 bg-cyan-500/10 px-2.5 text-[0.68rem] font-medium text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200"
+            >
+              <MessageSquareHeartIcon className="size-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Talk to the Developer</span>
+              <span className="inline sm:hidden">Developer</span>
+            </Button>
+            {unreadFeedbackCount > 0 && (
+              <span className="pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[0.55rem] font-bold text-white ring-2 ring-card">
+                {unreadFeedbackCount}
+              </span>
+            )}
+          </div>
+
           <UpdateDialog />
+          <FeedbackDialog screenCount={hdmiState.monitors.length || 1} />
           <SettingsDialog />
           <HymnConsole />
         </div>
