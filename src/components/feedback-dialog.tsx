@@ -13,6 +13,7 @@ import {
   MailIcon,
   Building2Icon,
   DownloadIcon,
+  LockIcon,
 } from "lucide-react"
 import {
   Dialog,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CommandCenterDialog } from "@/components/command-center-dialog"
 import { useFeedbackStore, type FeedbackMessage } from "@/stores/feedback-store"
 import { useGpuInfo } from "@/hooks/use-gpu-info"
 import { openExternalUrl } from "@/lib/open-external"
@@ -51,6 +53,7 @@ export function FeedbackDialog({ screenCount = 1 }: { screenCount?: number }) {
   const [churchAddress, setChurchAddress] = useState(profile.churchAddress || "")
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [commandCenterOpen, setCommandCenterOpen] = useState(false)
 
   // Chat composer state
   const [text, setText] = useState("")
@@ -316,12 +319,21 @@ export function FeedbackDialog({ screenCount = 1 }: { screenCount?: number }) {
               <span>•</span>
               <button
                 type="button"
+                onClick={() => setCommandCenterOpen(true)}
+                className="flex items-center gap-1 font-semibold text-emerald-400 hover:underline"
+              >
+                <LockIcon className="size-2.5" />
+                <span>Dev Command Center (PIN)</span>
+              </button>
+              <span>•</span>
+              <button
+                type="button"
                 onClick={() =>
                   void openExternalUrl("https://lifestone-church-ai.vercel.app/command-center")
                 }
                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
               >
-                <span>Command Center Map</span>
+                <span>Web Map</span>
                 <ExternalLinkIcon className="size-2.5" />
               </button>
             </div>
@@ -455,6 +467,10 @@ export function FeedbackDialog({ screenCount = 1 }: { screenCount?: number }) {
           </div>
         </form>
       </DialogContent>
+      <CommandCenterDialog
+        open={commandCenterOpen}
+        onOpenChange={setCommandCenterOpen}
+      />
     </Dialog>
   )
 }

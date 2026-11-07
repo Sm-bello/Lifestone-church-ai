@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   ArrowLeft,
   Megaphone,
+  Lock,
+  KeyRound,
 } from "lucide-react";
 import type { BeaconNode, FeedbackMessage } from "../_lib/command-store";
 
@@ -30,6 +32,7 @@ interface ThreadItem {
 }
 
 const LOCAL_THREADS_STORAGE_KEY = "lifestone_command_center_threads_v1";
+const DEVELOPER_PIN = "1213";
 
 /** Convert lat/lng to SVG x/y on a 1000x500 Equirectangular map */
 function latLngToSvg(lat: number, lng: number): { x: number; y: number } {
@@ -52,6 +55,34 @@ export default function CommandCenterPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<"world" | "building">("world");
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("lifestone_web_dev_unlocked") === "true") {
+        setIsUnlocked(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleUnlockPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput.trim() === DEVELOPER_PIN) {
+      setIsUnlocked(true);
+      setPinError(false);
+      try {
+        sessionStorage.setItem("lifestone_web_dev_unlocked", "true");
+      } catch {
+        // ignore
+      }
+    } else {
+      setPinError(true);
+    }
+  };
 
   const fetchCommandData = useCallback(async () => {
     setIsRefreshing(true);
@@ -221,6 +252,66 @@ export default function CommandCenterPage() {
 
   const gpuNodesCount = nodes.filter((n) => n.hasGpu).length;
   const liveNodesCount = nodes.filter((n) => n.status === "live").length;
+
+  if (!isUnlocked) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#050811] px-4 text-slate-100">
+        <div className="w-full max-w-md rounded-2xl border border-cyan-500/30 bg-[#090e1c] p-8 shadow-2xl">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30">
+            <Lock className="size-7" />
+          </div>
+          <h1 className="text-center text-xl font-bold text-white">
+            Lifestone Command Center
+          </h1>
+          <p className="mt-1.5 text-center text-xs text-slate-400">
+            Developer Access Only • Enter your 4-digit security PIN to view Global Light-Node Church Beacons and Sanctuary Dispatch.
+          </p>
+
+          <form onSubmit={handleUnlockPin} className="mt-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="flex items-center justify-center gap-1.5 text-xs font-medium text-cyan-300">
+                <KeyRound className="size-3.5" />
+                <span>Developer Security PIN</span>
+              </label>
+              <input
+                type="password"
+                autoFocus
+                placeholder="Enter PIN"
+                value={pinInput}
+                onChange={(e) => {
+                  setPinInput(e.target.value);
+                  setPinError(false);
+                }}
+                className="w-full rounded-xl border border-slate-700 bg-[#050811] px-4 py-3 text-center font-mono text-xl tracking-[0.45em] text-white placeholder:tracking-normal placeholder:text-xs placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+              />
+              {pinError && (
+                <p className="text-center text-xs font-medium text-rose-400">
+                  Invalid PIN. Please enter your developer PIN (1213).
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-cyan-600 py-3 text-xs font-semibold text-white transition hover:bg-cyan-500"
+            >
+              Unlock Command Center
+            </button>
+
+            <div className="pt-2 text-center">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+              >
+                <ArrowLeft className="size-3" />
+                <span>Return to Lifestone Website</span>
+              </Link>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050811] text-slate-100">
