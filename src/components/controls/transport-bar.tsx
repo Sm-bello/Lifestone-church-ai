@@ -92,9 +92,9 @@ export function TransportBar() {
   useEffect(() => {
     if (!hasSeenHymnNotification) {
       const timer = setTimeout(() => {
-        toast("🎵 Church Hymnal & HDMI Auto-Detect Are Live!", {
+        toast("🎵 Church Hymnal (2,900+ Hymns) & HDMI Auto-Detect Are Live!", {
           description:
-            "Over 2,000 hymns ready for worship. The interactive tutorial guide has been updated with full projector, GPU, and developer chat walkthroughs.",
+            "Over 2,900 hymns ready for worship. Plug your HDMI cable in and Lifestone automatically detects your screens with one-click live projection.",
           action: {
             label: "Take Tour",
             onClick: () => {
@@ -111,7 +111,23 @@ export function TransportBar() {
 
   const hdmiState = useHdmiMonitor()
 
-  // Show banner whenever HDMI is detected or projector is active
+  // Notify user whenever an HDMI cable is plugged in
+  useEffect(() => {
+    if (hdmiState.hdmiDetected) {
+      toast("🔌 HDMI Cable Connected!", {
+        description: `${hdmiState.monitors.length} display(s) detected. Accept connection to select your projector screen.`,
+        action: {
+          label: "Accept HDMI",
+          onClick: () => {
+            setBannerVisible(true)
+          },
+        },
+        duration: 8000,
+      })
+    }
+  }, [hdmiState.hdmiDetected, hdmiState.monitors.length])
+
+  // Show banner whenever HDMI is detected, projector is active, or user toggles banner
   const showBanner = hdmiState.hdmiDetected || projectorOpen || bannerVisible
 
   const openProjector = useCallback(async () => {
@@ -142,12 +158,9 @@ export function TransportBar() {
   const handleProjectorButtonClick = () => {
     if (projectorOpen) {
       void closeProjector()
-    } else if (hdmiState.monitors.length > 1) {
-      // Multiple monitors available – show the guided banner
-      setBannerVisible(true)
     } else {
-      // Single monitor fallback
-      void openProjector()
+      // Always show guided display selector so user chooses which screen and projects LIVE
+      setBannerVisible(true)
     }
   }
 
@@ -386,11 +399,12 @@ export function TransportBar() {
       {showBanner && (
         <div className="border-t border-border/60 bg-muted/30 px-3 py-1.5">
           <HdmiProjectorBanner
-            monitors={hdmiState.monitors}
+            {...hdmiState}
+            hdmiDetected={hdmiState.hdmiDetected || bannerVisible}
             projectorOpen={projectorOpen}
-            openProjector={openProjector}
-            closeProjector={closeProjector}
+            onProjectorOpen={setProjectorOpen}
             dismissHdmi={handleBannerDismiss}
+            initialStep={bannerVisible ? "select" : undefined}
           />
         </div>
       )}

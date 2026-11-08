@@ -11,7 +11,7 @@
  * The banner is fully responsive and adapts its layout based on available space.
  */
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import {
   MonitorPlay,
@@ -28,12 +28,14 @@ import { useBroadcastStore } from "@/stores"
 import type { HdmiMonitorState } from "@/hooks/use-hdmi-monitor"
 import type { Monitor as TauriMonitor } from "@tauri-apps/api/window"
 
-type Step = "notify" | "select" | "done"
+export type Step = "notify" | "select" | "done"
 
-interface Props extends HdmiMonitorState {
+export interface HdmiProjectorBannerProps extends HdmiMonitorState {
   /** Whether a broadcast window is currently open */
   projectorOpen: boolean
   onProjectorOpen: (open: boolean) => void
+  /** Optional initial step when opening manually */
+  initialStep?: Step
 }
 
 function MonitorCard({
@@ -53,6 +55,7 @@ function MonitorCard({
 
   return (
     <button
+      type="button"
       onClick={onSelect}
       className={cn(
         "group relative flex flex-col items-center gap-1.5 rounded-lg border p-3 text-left transition-all",
@@ -82,7 +85,7 @@ function MonitorCard({
 
       <div className="text-center">
         <p className="text-xs font-medium leading-tight">
-          {isPrimary ? "Primary" : `Display ${index + 1}`}
+          {isPrimary ? "Primary Display" : `Display ${index + 1} (External)`}
         </p>
         <p className="text-[0.625rem] text-muted-foreground leading-tight">
           {width}×{height}
@@ -109,16 +112,34 @@ export function HdmiProjectorBanner({
   refresh,
   projectorOpen,
   onProjectorOpen,
-}: Props) {
-  const [step, setStep] = useState<Step>("notify")
+  initialStep,
+}: HdmiProjectorBannerProps) {
+  const [step, setStep] = useState<Step>(() => initialStep || (hdmiDetected ? "notify" : "select"))
   const [selectedMonitorIdx, setSelectedMonitorIdx] = useState<number>(
     projectorMonitor?.index ?? (monitors.length > 1 ? 1 : 0)
   )
   const [launching, setLaunching] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Reset to notify step whenever a new HDMI event fires
-  // (parent controls visibility via hdmiDetected)
+  // Sync step if parent asks for a specific step or HDMI event fires
+  useEffect(() => {
+    if (initialStep) {
+      setStep(initialStep)
+    } else if (hdmiDetected) {
+      setStep("notify")
+    }
+  }, [initialStep, hdmiDetected])
+
+  // Update selected monitor whenever monitors change
+  useEffect(() => {
+    if (projectorMonitor) {
+      setSelectedMonitorIdx(projectorMonitor.index)
+    } else if (monitors.length > 1) {
+      setSelectedMonitorIdx(1)
+    } else {
+      setSelectedMonitorIdx(0)
+    }
+  }, [projectorMonitor, monitors.length])
 
   const handleAccept = () => {
     // Pre-select the projector monitor
@@ -166,7 +187,7 @@ export function HdmiProjectorBanner({
     dismissHdmi()
   }
 
-  if (!hdmiDetected && !projectorOpen) return null
+  if (!hdmiDetected && !projectorOpen && !initialStep) return null
 
   // ── Persistent compact bar when projector is already open ────────────────
   if (!hdmiDetected && projectorOpen) {
@@ -174,7 +195,9 @@ export function HdmiProjectorBanner({
       <div className="flex items-center justify-between gap-2 rounded-lg border border-lime-500/30 bg-lime-500/5 px-3 py-2 text-xs">
         <div className="flex items-center gap-2 text-lime-400">
           <MonitorPlay className="size-3.5 shrink-0" />
-          <span className="font-medium">Projecting on Display {selectedMonitorIdx + 1}</span>
+          <span className="font-medium">
+            Live on {selectedMonitorIdx === 0 ? "Primary Display" : `Display ${selectedMonitorIdx + 1}`}
+          </span>
           {monitors[selectedMonitorIdx] && (
             <span className="text-muted-foreground">
               ({monitors[selectedMonitorIdx].size.width}×
@@ -194,7 +217,7 @@ export function HdmiProjectorBanner({
           }}
         >
           <X className="size-3" />
-          Stop
+          Stop Projector
         </Button>
       </div>
     )
@@ -206,7 +229,7 @@ export function HdmiProjectorBanner({
       <div className="flex items-center gap-2 rounded-lg border border-lime-500/30 bg-lime-500/8 px-3 py-2.5 text-xs text-lime-400">
         <CheckCircle2 className="size-4 shrink-0" />
         <span className="font-medium">
-          {projectorOpen ? "Projector active!" : "Projector closed."}
+          {projectorOpen ? "Projector active and LIVE!" : "Projector closed."}
         </span>
       </div>
     )
@@ -218,18 +241,18 @@ export function HdmiProjectorBanner({
       <div
         role="alert"
         aria-live="assertive"
-        className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 shadow-md"
+        className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 shadow-md"
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
-            <Plug className="size-3.5 text-amber-400" />
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+            <Plug className="size-4 text-amber-400 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-foreground leading-tight">
-              New display detected
+            <p className="text-xs font-bold text-foreground leading-tight">
+              🔌 New HDMI / External Display Detected
             </p>
-            <p className="text-[0.625rem] text-muted-foreground leading-tight truncate">
-              HDMI connected — ready to project your content
+            <p className="text-[0.68rem] text-muted-foreground leading-tight truncate">
+              {monitors.length} display{monitors.length === 1 ? "" : "s"} ready — Accept to choose your projector screen
             </p>
           </div>
         </div>
@@ -238,7 +261,7 @@ export function HdmiProjectorBanner({
           <Button
             size="xs"
             variant="ghost"
-            className="h-7 gap-1 px-2 text-[0.625rem] text-muted-foreground"
+            className="h-7 gap-1 px-2 text-[0.68rem] text-muted-foreground hover:text-foreground"
             onClick={handleDismiss}
           >
             <X className="size-3" />
@@ -246,11 +269,11 @@ export function HdmiProjectorBanner({
           </Button>
           <Button
             size="xs"
-            className="h-7 gap-1 px-2.5 text-[0.625rem] bg-amber-500 text-black hover:bg-amber-400"
+            className="h-7 gap-1 px-3 text-[0.68rem] font-bold bg-amber-500 text-black hover:bg-amber-400 shadow-sm"
             onClick={handleAccept}
           >
             Accept HDMI
-            <ChevronRight className="size-3" />
+            <ChevronRight className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -267,7 +290,7 @@ export function HdmiProjectorBanner({
             <MonitorPlay className="size-3.5 text-lime-400" />
           </div>
           <span className="text-xs font-semibold text-foreground">
-            Select projector screen
+            Select projector screen to project LIVE
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -279,9 +302,10 @@ export function HdmiProjectorBanner({
             className="h-6 gap-1 px-1.5 text-[0.625rem] text-muted-foreground"
           >
             <RefreshCw className={cn("size-3", refreshing && "animate-spin")} />
-            Refresh
+            Refresh Displays
           </Button>
           <button
+            type="button"
             onClick={handleDismiss}
             className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Dismiss"
@@ -295,12 +319,12 @@ export function HdmiProjectorBanner({
       <div
         className="grid gap-2"
         style={{
-          gridTemplateColumns: `repeat(${Math.min(monitors.length, 4)}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${Math.max(1, Math.min(monitors.length, 4))}, minmax(0, 1fr))`,
         }}
       >
         {monitors.length === 0 ? (
           <p className="col-span-full text-center text-[0.625rem] text-muted-foreground py-3">
-            No displays found — click Refresh
+            No external displays detected — plug in your HDMI cable and click Refresh Displays
           </p>
         ) : (
           monitors.map((m, i) => (
@@ -320,7 +344,7 @@ export function HdmiProjectorBanner({
         <p className="text-[0.625rem] text-muted-foreground text-center">
           Will project on{" "}
           <span className="text-foreground font-medium">
-            {selectedMonitorIdx === 0 ? "Primary" : `Display ${selectedMonitorIdx + 1}`}
+            {selectedMonitorIdx === 0 ? "Primary Display" : `Display ${selectedMonitorIdx + 1}`}
           </span>{" "}
           — {monitors[selectedMonitorIdx].size.width}×
           {monitors[selectedMonitorIdx].size.height}
@@ -329,14 +353,14 @@ export function HdmiProjectorBanner({
 
       {/* Project button */}
       <Button
-        className="w-full gap-2 bg-lime-600 hover:bg-lime-500 text-white text-xs h-8"
+        className="w-full gap-2 bg-lime-600 hover:bg-lime-500 text-white text-xs h-8 font-semibold shadow"
         disabled={monitors.length === 0 || launching}
         onClick={handleProject}
       >
         <MonitorPlay className="size-3.5" />
-        {launching ? "Opening…" : projectorOpen ? "Close Projector" : "Project"}
+        {launching ? "Opening…" : projectorOpen ? "Close Projector" : "Project LIVE Now"}
         {!launching && monitors[selectedMonitorIdx] && (
-          <span className="text-lime-200/70 text-[0.6rem]">
+          <span className="text-lime-200/80 text-[0.6rem]">
             ({monitors[selectedMonitorIdx].size.width}×
             {monitors[selectedMonitorIdx].size.height})
           </span>

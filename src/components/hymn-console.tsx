@@ -124,6 +124,9 @@ export function HymnConsole() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
                 Hymnal &amp; Worship
+                <Badge variant="outline" className="text-[11px] font-semibold bg-primary/10 text-primary border-primary/20">
+                  {hymns.length.toLocaleString()} Hymns
+                </Badge>
               </h1>
               <p className="text-[11px] text-muted-foreground hidden sm:block">
                 Project hymns and worship songs live to the screen

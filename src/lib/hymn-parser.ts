@@ -1,5 +1,5 @@
 import type { Hymn, HymnStanza } from "@/types/hymn"
-import ghsHymnsData from "@/data/ghs-hymns.json"
+import bundledHymnsData from "@/data/bundled-hymns.json"
 
 interface RawBlock {
   explicitType?: HymnStanza["type"]
@@ -187,4 +187,4 @@ function capitalize(s: string): string {
 /**
  * Complete collection of 260 Gospel Hymns & Songs (GHS 1 - 260) bundled offline
  */
-export const BUILTIN_HYMNS: Hymn[] = ghsHymnsData as unknown as Hymn[]
+export const BUILTIN_HYMNS: Hymn[] = bundledHymnsData as unknown as Hymn[]

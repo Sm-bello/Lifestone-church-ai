@@ -1,6 +1,8 @@
 {
   "productName": "Lifestone Lite",
   "bundle": {
+    "publisher": "WHITE HORSE media",
+    "copyright": "Copyright © WHITE HORSE media",
     "targets": ["nsis"],
     "externalBin": ["binaries/ppt_sidecar"],
     "resources": [

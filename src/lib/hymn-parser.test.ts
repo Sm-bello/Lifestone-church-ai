@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest"
 import { parseHymnText, BUILTIN_HYMNS } from "./hymn-parser"
 
 describe("hymn-parser", () => {
-  it("includes all 260 builtin GHS hymns with stanzas", () => {
-    expect(BUILTIN_HYMNS.length).toBe(260)
+  it("includes all 2,000+ builtin hymns with stanzas", () => {
+    expect(BUILTIN_HYMNS.length).toBeGreaterThanOrEqual(2000)
 
     const titles = BUILTIN_HYMNS.map((h) => h.title)
     expect(titles).toContain("All Your Anxiety")
