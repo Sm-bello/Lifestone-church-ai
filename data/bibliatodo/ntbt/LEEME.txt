@@ -1,0 +1,41 @@
+NTBT · Texto bíblico
+66 libros · 1.189 capítulos · 31.104 versículos.
+
+FORMATOS DE INTEGRACIÓN
+JSON (schema 3): libros > capitulos > versiculos. Cada libro tiene codigo USFM y nombre; cada capítulo y versículo, numero. El texto bíblico está en texto. La edición con estudio añade intro al libro y nota al versículo, con HTML íntegro.
+Los campos opcionales encabezado, titulo y subtitulo contienen títulos; referencias contiene HTML de referencias. Se omiten cuando no hay contenido. La edición de texto omite completamente intro y nota.
+SQLite: libros(codigo, orden, nombre, intro*) y versiculos(libro, capitulo, versiculo, texto, encabezado*, titulo*, subtitulo*, referencias*, nota*). El asterisco identifica columnas opcionales; solo se incluyen cuando existen datos en la edición. intro y nota contienen HTML. La clave de un versículo es libro + capitulo + versiculo. metadatos contiene la identificación y atribución de la edición.
+Los códigos de libro siguen USFM (GEN, EXO, MAT, JHN, etc.). No se necesitan identificadores editoriales privados.
+USFM y USX 3.1: títulos principales en ms1, secciones en s1, subtítulos en s2 y referencias de sección en r. Las introducciones usan ip; los estudios por versículo, notas de estudio ef con fr y ft. En estos dos formatos el contenido se representa como texto compatible; JSON y SQLite conservan el HTML completo.
+Conserva la licencia, los créditos y la atribución que acompañan los materiales. Uso y distribución gratuitos conforme a la Licencia NTBT, sin regalías ni comisiones.
+Información y contacto: https://www.bibliatodo.org/es/ntbt/ · info@bibliatodo.org
+
+
+METODOLOGÍA
+Las traducciones de BibliaTodo se elaboran a partir de los textos de las Escrituras en hebreo, arameo y griego. En nuestra metodología identificamos las ediciones textuales que utilizamos.
+La fidelidad al sentido del hebreo, arameo y griego es el criterio principal. La claridad de la redacción no debe introducir explicaciones teológicas ni resolver ambigüedades que el texto y su contexto mantienen. Las decisiones de traducción deben justificarse desde las lenguas bíblicas; las explicaciones, interpretaciones y aplicaciones se presentan por separado en el material de estudio.
+https://www.bibliatodo.org/es/ntbt/credits
+
+También disponible en otros idiomas
+English · BibliaTodo New Translation (BTNT)
+Texto bíblico · PDF: https://downloads.bibliatodo.org/en/texto/BTNT.pdf
+Texto bíblico · EPUB: https://downloads.bibliatodo.org/en/texto/BTNT.epub
+Edición con estudio completo · PDF: https://downloads.bibliatodo.org/en/estudio/BTNT.pdf
+Edición con estudio completo · EPUB: https://downloads.bibliatodo.org/en/estudio/BTNT.epub
+Todos los formatos: https://www.bibliatodo.org/en/btnt/materials
+Português (Brasil) · Nova Tradução BibliaTodo (NTB-BR)
+Texto bíblico · PDF: https://downloads.bibliatodo.org/pt/texto/NTB-BR.pdf
+Texto bíblico · EPUB: https://downloads.bibliatodo.org/pt/texto/NTB-BR.epub
+Todos los formatos: https://www.bibliatodo.org/pt/ntb-br/materials
+
+Por qué compartimos gratuitamente nuestras traducciones
+Nuestra mayor aspiración es que más personas conozcan a Jesucristo mediante las Escrituras. Por eso compartimos nuestras traducciones con una licencia gratuita para usos comerciales y sin fines de lucro, sin regalías, comisiones ni cuotas de licencia.
+Puedes imprimir para uso personal, distribuir la traducción completa en formato digital, incluso en sitios y aplicaciones de pago, y usar versículos, citas, selecciones y libros bíblicos individuales en impresos o productos para regalar o vender. Conserva íntegros el texto y su atribución y distingue tus añadidos.
+Antes de imprimir una Biblia completa, todo el Antiguo Testamento o todo el Nuevo Testamento para vender, donar o distribuir a terceros, regístrate gratuitamente, verifica tu correo y solicita aprobación escrita de la edición. Envía el folio y la maqueta final a info@bibliatodo.org. No se cobran regalías, comisiones ni cuotas de licencia.
+Los usos autorizados directamente no requieren registro. Puedes solicitar una constancia personal o avisos editoriales de forma opcional. Las ediciones aprobadas pueden reimprimirse con la misma portada, maqueta y contenido editorial.
+https://www.bibliatodo.org/es/ntbt/credits#sharing
+
+
+ESTRUCTURA Y ENTREGA
+NTBT-2026-11-06 · 2026-11-06
+La estructura literaria no cambia el texto ni la numeración. p=[versículo, desplazamiento Unicode, estilo]: 0=párrafo, 1=q1, 2=q2, 3=q3. d identifica encabezamientos antiguos; s, comienzos de estrofa. Los desplazamientos cuentan puntos de código Unicode desde cero, antes del espacio que inicia la línea siguiente. JSON incluye formato en cada capítulo; SQLite usa formato_capitulos(libro,capitulo,formato). USFM/USX usan p, q1–q3, b y d; qa identifica rótulos acrósticos. La numeración propia de Salmos 47:9–10 se conserva. La fecha de corte identifica esta entrega y es independiente del catálogo, USFM 3.1 y la licencia.

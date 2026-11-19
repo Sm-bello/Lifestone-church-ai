@@ -276,3 +276,62 @@ describe("getTabNavigationResult", () => {
     expect(result).toBe("Romans 8:")
   })
 })
+
+const mockNtbtBooks: Book[] = [
+  { id: 101, translation_id: 11, book_number: 1, name: "Génesis", abbreviation: "GEN", testament: "OT" },
+  { id: 102, translation_id: 11, book_number: 2, name: "Éxodo", abbreviation: "EXO", testament: "OT" },
+  { id: 113, translation_id: 11, book_number: 13, name: "1 Crónicas", abbreviation: "1CH", testament: "OT" },
+  { id: 119, translation_id: 11, book_number: 19, name: "Salmos", abbreviation: "PSA", testament: "OT" },
+  { id: 143, translation_id: 11, book_number: 43, name: "Juan", abbreviation: "JHN", testament: "NT" },
+  { id: 162, translation_id: 11, book_number: 62, name: "1 Juan", abbreviation: "1JN", testament: "NT" },
+  { id: 164, translation_id: 11, book_number: 64, name: "3 Juan", abbreviation: "3JN", testament: "NT" },
+]
+
+describe("Spanish NTBT accented and numbered books", () => {
+  it("matches accented 'Génesis' whether typed with or without accent", () => {
+    const withAccent = getAutocompleteSuggestion("Génesis 1:1", mockNtbtBooks)
+    expect(withAccent.stage).toBe("complete")
+    expect(withAccent.matchedBook?.name).toBe("Génesis")
+    expect(withAccent.chapter).toBe(1)
+    expect(withAccent.verse).toBe(1)
+
+    const withoutAccent = getAutocompleteSuggestion("Genesis 1:1", mockNtbtBooks)
+    expect(withoutAccent.stage).toBe("complete")
+    expect(withoutAccent.matchedBook?.name).toBe("Génesis")
+  })
+
+  it("matches accented 'Éxodo' partial input without accent", () => {
+    const result = getAutocompleteSuggestion("exo", mockNtbtBooks)
+    expect(result.suggestion).toBe("Éxodo 1:1")
+    expect(result.matchedBook?.name).toBe("Éxodo")
+    expect(result.stage).toBe("book")
+  })
+
+  it("matches Arabic-numbered book '1 Juan 1:9' and '1 Crónicas 29:11'", () => {
+    const juan = getAutocompleteSuggestion("1 Juan 1:9", mockNtbtBooks)
+    expect(juan.stage).toBe("complete")
+    expect(juan.matchedBook?.name).toBe("1 Juan")
+    expect(juan.chapter).toBe(1)
+    expect(juan.verse).toBe(9)
+
+    const cronicas = getAutocompleteSuggestion("1 Crónicas 29:11", mockNtbtBooks)
+    expect(cronicas.stage).toBe("complete")
+    expect(cronicas.matchedBook?.name).toBe("1 Crónicas")
+    expect(cronicas.chapter).toBe(29)
+    expect(cronicas.verse).toBe(11)
+  })
+
+  it("suggests Arabic-numbered book when typing '1'", () => {
+    const result = getAutocompleteSuggestion("1", mockNtbtBooks)
+    expect(result.suggestion).toBe("1 Crónicas 1:1")
+    expect(result.matchedBook?.name).toBe("1 Crónicas")
+    expect(result.stage).toBe("book")
+  })
+
+  it("handles Tab navigation on accented and Arabic-numbered books", () => {
+    expect(getTabNavigationResult("Gén", "Génesis 1:1")).toBe("Génesis ")
+    expect(getTabNavigationResult("Génesis 1", "Génesis 1:1")).toBe("Génesis 1:")
+    expect(getTabNavigationResult("1 j", "1 Juan 1:1")).toBe("1 Juan ")
+    expect(getTabNavigationResult("1 Juan 1", "1 Juan 1:1")).toBe("1 Juan 1:")
+  })
+})
