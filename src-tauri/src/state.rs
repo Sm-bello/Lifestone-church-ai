@@ -49,24 +49,24 @@ impl AppState {
 pub fn find_bible_db_fallback() -> Option<std::path::PathBuf> {
     let mut candidates = Vec::new();
 
-    // 1. Executable parent directory & subdirectories
+    // 1. Executable parent directory & subdirectories (prefer Tauri v2 bundled `_up_/data/lifestone.db` over legacy root copy)
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(exe_dir) = current_exe.parent() {
-            candidates.push(exe_dir.join("lifestone.db"));
             candidates.push(exe_dir.join("_up_").join("data").join("lifestone.db"));
             candidates.push(exe_dir.join("data").join("lifestone.db"));
-            candidates.push(exe_dir.join("resources").join("lifestone.db"));
             candidates.push(exe_dir.join("resources").join("_up_").join("data").join("lifestone.db"));
             candidates.push(exe_dir.join("resources").join("data").join("lifestone.db"));
+            candidates.push(exe_dir.join("resources").join("lifestone.db"));
+            candidates.push(exe_dir.join("lifestone.db"));
         }
     }
 
     // 2. User Local AppData
     if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
         let p = std::path::PathBuf::from(local_appdata).join("Lifestone");
-        candidates.push(p.join("lifestone.db"));
         candidates.push(p.join("_up_").join("data").join("lifestone.db"));
         candidates.push(p.join("data").join("lifestone.db"));
+        candidates.push(p.join("lifestone.db"));
     }
 
     // 3. User Roaming AppData
