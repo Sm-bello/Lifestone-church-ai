@@ -44,6 +44,8 @@ jobs:
           mkdir -p data
           mkdir -p models/whisper
           mkdir -p models/minilm-onnx/onnx
+          mkdir -p src-tauri/target/release/build/examples
+          mkdir -p src-tauri/target/release/build/deps
           
           gh release download v1.0.0-models -p "lifestone.db" -D data/ || curl -fSL -o data/lifestone.db "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.0.0-models/lifestone.db"
           if [ ! -f models/whisper/ggml-base.bin ]; then
