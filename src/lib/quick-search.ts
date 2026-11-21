@@ -48,15 +48,57 @@ export function normalizeInput(input: string): string {
 }
 
 /**
- * Find matching book by name or abbreviation (case insensitive)
+ * Strip diacritics/accents for accent-insensitive comparison (e.g. "Génesis" -> "Genesis")
+ */
+export function stripAccents(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+}
+
+/**
+ * Convert leading Roman numeral prefix ("I ", "II ", "III ") back to Arabic ("1 ", "2 ", "3 ")
+ * so translations whose book names use Arabic digits (e.g. "1 Juan", "1 Samuel") also match.
+ */
+function romanToArabicPrefix(str: string): string {
+  return str
+    .replace(/^iii(?=\s|$)/i, "3")
+    .replace(/^ii(?=\s|$)/i, "2")
+    .replace(/^i(?=\s|$)/i, "1")
+}
+
+/**
+ * Find matching book by name or abbreviation (case & accent insensitive, Roman/Arabic numbered book aware)
  */
 export function findMatchingBook(bookInput: string, books: Book[]): Book | undefined {
   const normalized = bookInput.toLowerCase()
-  return books.find(
+
+  // 1. Exact lowercase prefix match (original behavior)
+  const exact = books.find(
     b =>
       b.name.toLowerCase().startsWith(normalized) ||
       b.abbreviation.toLowerCase().startsWith(normalized)
   )
+  if (exact) return exact
+
+  // 2. Accent-insensitive or Arabic-numbered prefix match (e.g. "genesis" -> "Génesis", "I juan" -> "1 Juan")
+  const normStripped = stripAccents(normalized)
+  const arabicVariant = romanToArabicPrefix(normalized)
+  const arabicStripped = stripAccents(arabicVariant)
+  const arabicNoSpace = arabicStripped.replace(/^(\d+)\s+/, "$1")
+
+  return books.find(b => {
+    const nameLower = b.name.toLowerCase()
+    const nameStripped = stripAccents(nameLower)
+    const abbrLower = b.abbreviation.toLowerCase()
+    const abbrStripped = stripAccents(abbrLower)
+
+    return (
+      nameStripped.startsWith(normStripped) ||
+      nameLower.startsWith(arabicVariant) ||
+      nameStripped.startsWith(arabicStripped) ||
+      abbrStripped.startsWith(normStripped) ||
+      abbrStripped.startsWith(arabicNoSpace)
+    )
+  })
 }
 
 /**
@@ -76,12 +118,17 @@ export function getAutocompleteSuggestion(
 
   // Check if it's just a number (for numbered books like "1", "2", "3")
   if (/^\d+$/.test(trimmed)) {
-    const matchingBook = books.find(b => b.name.startsWith(normalizedInput + " "))
+    const matchingBook =
+      books.find(b => b.name.startsWith(normalizedInput + " ")) ??
+      books.find(b => b.name.startsWith(trimmed + " "))
 
     if (matchingBook) {
-      const remainder = matchingBook.name.slice(normalizedInput.length)
+      const prefixUsed = matchingBook.name.startsWith(normalizedInput + " ")
+        ? normalizedInput
+        : trimmed
+      const remainder = matchingBook.name.slice(prefixUsed.length)
       return {
-        suggestion: normalizedInput + remainder + " 1:1",
+        suggestion: prefixUsed + remainder + " 1:1",
         matchedBook: matchingBook,
         chapter: 1,
         verse: 1,
@@ -91,8 +138,8 @@ export function getAutocompleteSuggestion(
   }
 
   // Parse: "NumberedBook Chapter:Verse" or "BookName Chapter:Verse"
-  // Match patterns like: "I J", "I John", "John", "John 3", "John 3:16"
-  const match = normalizedInput.match(/^([IVX]+\s+[a-zA-Z]+|[IVX]+\s+[a-zA-Z\s]+|[a-zA-Z\s]+?)\s*(\d+)?:?(\d+)?$/)
+  // Match patterns like: "I J", "I John", "John", "John 3", "John 3:16", "Génesis 1:1", "1 Juan 1:9"
+  const match = normalizedInput.match(/^([IVX]+\s+[\p{L}]+|[IVX]+\s+[\p{L}\s]+|[\p{L}\s]+?)\s*(\d+)?:?(\d+)?$/u)
 
   if (!match) {
     return { suggestion: "", stage: "none" }
@@ -172,7 +219,7 @@ export function getTabNavigationResult(
   const suggestionTrimmed = currentSuggestion.trim()
 
   // Extract the full book name from the suggestion
-  const bookNameMatch = suggestionTrimmed.match(/^(([IVX]+\s+)?[a-zA-Z\s]+)\s+\d+:\d+$/)
+  const bookNameMatch = suggestionTrimmed.match(/^(((?:[IVX]+|\d+)\s+)?[\p{L}\s]+)\s+\d+:\d+$/u)
 
   if (bookNameMatch) {
     const fullBookName = bookNameMatch[1]
@@ -182,8 +229,11 @@ export function getTabNavigationResult(
       trimmed === fullBookName + " " || trimmed === fullBookName
 
     // Check if current input has a chapter number
+    const escapedBook = fullBookName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const escapedStrippedBook = stripAccents(fullBookName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const hasChapter =
-      new RegExp(`^${fullBookName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\d+`, 'i').test(trimmed) &&
+      (new RegExp(`^${escapedBook}\\s+\\d+`, 'iu').test(trimmed) ||
+        new RegExp(`^${escapedStrippedBook}\\s+\\d+`, 'iu').test(stripAccents(trimmed))) &&
       !trimmed.includes(':')
 
     // Stage 1: Still typing book name -> advance to complete book name
@@ -193,7 +243,7 @@ export function getTabNavigationResult(
 
     // Stage 2: Has chapter -> advance to chapter with colon
     if (hasChapter) {
-      const chapterMatch = suggestionTrimmed.match(/^(([IVX]+\s+)?[a-zA-Z\s]+\s+\d+):\d+$/)
+      const chapterMatch = suggestionTrimmed.match(/^(((?:[IVX]+|\d+)\s+)?[\p{L}\s]+\s+\d+):\d+$/u)
       if (chapterMatch) {
         return chapterMatch[1] + ":"
       }

@@ -3,9 +3,9 @@ import { getVersion } from "@tauri-apps/api/app"
 import { compareVersions, normalizeVersion } from "@/lib/semver"
 import type { UpdateInfo } from "@/types/update"
 
-const GITHUB_API_LATEST = "https://api.github.com/repos/Sm-bello/Lifestone-church-ai/releases/latest"
+const GITHUB_API_LATEST = "https://api.github.com/repos/calvaryarmies/Lifestone-church-ai/releases/latest"
 const STORAGE_KEY = "lifestone_latest_update"
-const FALLBACK_VERSION = "1.1.1"
+const FALLBACK_VERSION = "1.2.0"
 
 interface UpdateState {
   currentVersion: string
@@ -139,7 +139,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
         title: data.name || `Lifestone v${version}`,
         notes: data.body || "",
         publishedAt: data.published_at || new Date().toISOString(),
-        releaseUrl: data.html_url || "https://github.com/Sm-bello/Lifestone-church-ai/releases/latest",
+        releaseUrl: data.html_url || "https://github.com/calvaryarmies/Lifestone-church-ai/releases/latest",
         assets: Array.isArray(data.assets)
           ? data.assets.map((a: any) => ({
               name: a.name,

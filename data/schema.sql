@@ -55,3 +55,14 @@ CREATE TABLE IF NOT EXISTS embedding_status (
     computed_at TEXT,
     UNIQUE(translation_id, model_name)
 );
+
+CREATE TABLE IF NOT EXISTS translation_metadata (
+    translation_id INTEGER PRIMARY KEY REFERENCES translations(id),
+    release_id TEXT NOT NULL,
+    cutoff_date TEXT NOT NULL,
+    edition TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    license_version TEXT NOT NULL,
+    attribution TEXT NOT NULL,
+    url TEXT NOT NULL
+);

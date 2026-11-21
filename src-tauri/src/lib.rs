@@ -150,10 +150,8 @@ pub fn run() {
                 .resource_dir()
                 .ok()
                 .and_then(|p| {
-                    let direct = p.join("lifestone.db");
-                    if direct.is_file() {
-                        return Some(direct);
-                    }
+                    // Prefer Tauri v2 bundled resource paths (`_up_/data/lifestone.db` and `data/lifestone.db`)
+                    // before legacy root `lifestone.db` so upgrading users always load the newest bundled database.
                     let up_data = p.join("_up_").join("data").join("lifestone.db");
                     if up_data.is_file() {
                         return Some(up_data);
@@ -161,6 +159,10 @@ pub fn run() {
                     let data = p.join("data").join("lifestone.db");
                     if data.is_file() {
                         return Some(data);
+                    }
+                    let direct = p.join("lifestone.db");
+                    if direct.is_file() {
+                        return Some(direct);
                     }
                     None
                 })

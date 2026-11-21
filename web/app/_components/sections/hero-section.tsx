@@ -16,7 +16,11 @@ export function HeroSection({ stars }: { stars: number }) {
         as="div"
         className="relative flex flex-col items-center gap-12 py-20 text-center md:py-32 lg:py-40"
       >
-        <div className="flex flex-col items-center gap-2 mb-2">
+        <div className="flex flex-col items-center gap-3 mb-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent-cyan/30 bg-accent-cyan/10 px-3.5 py-1 text-xs font-semibold text-accent-cyan shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-accent-cyan animate-pulse" />
+            <span>🇪🇸 NEW IN v1.2.0: Spanish Bible Translation (Nueva Traducción BibliaTodo — NTBT) Now Bundled Offline!</span>
+          </div>
           <span className="text-accent-gold uppercase tracking-widest text-sm font-semibold">{SITE.legalName}</span>
           <h1 className="text-balance font-medium tracking-[-0.035em] text-foreground text-[56px] leading-[1.05] sm:text-[72px] md:text-[84px] lg:text-[100px] lg:tracking-[-0.05em]">
             LIFESTONE

@@ -42,9 +42,15 @@ import {
   GraduationCapIcon,
   BrainCircuitIcon,
 } from "lucide-react"
-import { useSettingsStore } from "@/stores"
+import { useSettingsStore, useBroadcastStore } from "@/stores"
 import { useTutorialStore } from "@/stores/tutorial-store"
 import { useSettingsDialogStore } from "@/lib/settings-dialog"
+import { openExternalUrl } from "@/lib/open-external"
+import {
+  TRANSLATION_ATTRIBUTIONS,
+  getTranslationAttribution,
+  toTranslationCreditsSlide,
+} from "@/lib/translation-credits"
 import type { DeviceInfo } from "@/types/audio"
 
 /* -------------------------------------------------------------------------- */
@@ -550,6 +556,16 @@ function BibleSection() {
 
   const englishTranslations = translations.filter((t) => t.language === "en")
   const otherTranslations = translations.filter((t) => t.language !== "en")
+  const activeTranslation = translations.find((t) => t.id === activeId)
+  const activeAttribution =
+    getTranslationAttribution(activeTranslation?.abbreviation) ??
+    TRANSLATION_ATTRIBUTIONS.NTBT
+
+  const handleProjectCreditsSlide = (abbreviation: string) => {
+    const slide = toTranslationCreditsSlide(abbreviation)
+    useBroadcastStore.getState().setLive(true)
+    useBroadcastStore.getState().setLiveVerse(slide)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -596,6 +612,61 @@ function BibleSection() {
           Detected verses will display in this translation.
           {translations.length > 0 && ` ${translations.length} translations available.`}
         </p>
+      </div>
+
+      {/* Translation Info & Stream Credits Section */}
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">
+              Translation Info &amp; Stream Credits ({activeAttribution.abbreviation})
+            </span>
+            <Badge variant="outline" className="text-[0.5625rem]">
+              {activeAttribution.releaseId}
+            </Badge>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[0.6875rem]"
+            onClick={() => handleProjectCreditsSlide(activeAttribution.abbreviation)}
+          >
+            <TvIcon className="mr-1.5 size-3" />
+            Project Credits Slide
+          </Button>
+        </div>
+
+        <p className="text-xs leading-relaxed text-foreground/90">
+          {activeAttribution.creditPrefix}
+          <a
+            href={activeAttribution.url}
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(activeAttribution.url)
+            }}
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            {activeAttribution.publisherLinkText}
+          </a>
+          {activeAttribution.creditSuffix}
+          <a
+            href={activeAttribution.url}
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(activeAttribution.url)
+            }}
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            {activeAttribution.url}
+          </a>
+        </p>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.625rem] text-muted-foreground">
+          <span>Release: {activeAttribution.releaseId}</span>
+          <span>Cut-off Date: {activeAttribution.cutoffDate}</span>
+          <span>Edition: {activeAttribution.edition} (Schema {activeAttribution.schemaVersion})</span>
+          <span>License: v{activeAttribution.licenseVersion}</span>
+        </div>
       </div>
     </div>
   )

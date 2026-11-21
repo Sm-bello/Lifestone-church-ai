@@ -103,6 +103,16 @@ const TRANSLATION_COMMANDS: &[(&str, &str)] = &[
     ("can i have that in spanish", "SpaRV"),
     ("spanish version", "SpaRV"),
     ("spanish translation", "SpaRV"),
+    // NTBT (Spanish - Nueva Traducción BibliaTodo)
+    ("give me ntbt", "NTBT"),
+    ("read in ntbt", "NTBT"),
+    ("switch to ntbt", "NTBT"),
+    ("in the ntbt", "NTBT"),
+    ("in ntbt", "NTBT"),
+    ("show me ntbt", "NTBT"),
+    ("nueva traducción bibliatodo", "NTBT"),
+    ("nueva traduccion bibliatodo", "NTBT"),
+    ("bibliatodo", "NTBT"),
     // FreJND (French - J.N. Darby)
     ("give me french", "FreJND"),
     ("read in french", "FreJND"),
@@ -482,6 +492,7 @@ impl DirectDetector {
                 "kjv" => Some("KJV"),
                 "amp" | "amplified" => Some("AMP"),
                 "sparv" | "spanish" => Some("SpaRV"),
+                "ntbt" => Some("NTBT"),
                 "frejnd" | "french" => Some("FreJND"),
                 "porblivre" | "portuguese" => Some("PorBLivre"),
                 "msg" | "message" => Some("MSG"),
@@ -773,12 +784,27 @@ fn compute_confidence(_resolved: &VerseRef, original: &VerseRef) -> f64 {
 
 /// Extract a snippet of text around the reference for context.
 fn extract_snippet(text: &str, start: usize, end: usize) -> String {
-    let snippet_start = start.saturating_sub(30);
-    let snippet_end = if end + 30 < text.len() {
+    let mut start = start.min(text.len());
+    while start > 0 && !text.is_char_boundary(start) {
+        start -= 1;
+    }
+    let mut end = end.min(text.len());
+    while end < text.len() && !text.is_char_boundary(end) {
+        end += 1;
+    }
+
+    let mut snippet_start = start.saturating_sub(30);
+    while snippet_start > 0 && !text.is_char_boundary(snippet_start) {
+        snippet_start -= 1;
+    }
+    let mut snippet_end = if end + 30 < text.len() {
         end + 30
     } else {
         text.len()
     };
+    while snippet_end < text.len() && !text.is_char_boundary(snippet_end) {
+        snippet_end += 1;
+    }
 
     // Adjust to word boundaries
     let snippet_start = text[snippet_start..start]
@@ -1304,5 +1330,64 @@ mod tests {
         assert!(!results.is_empty());
         assert_eq!(results[0].verse_ref.chapter, 3);
         assert_eq!(results[0].verse_ref.verse_start, 15);
+    }
+
+    #[test]
+    fn test_english_sermon_produces_no_new_detections() {
+        let mut detector = DirectDetector::new();
+        let sermon_segments = [
+            "Good morning church family, it is wonderful to gather together in worship today.",
+            "Sometimes life feels like we are stuck in a rut for 3 or 4 years and need grace.",
+            "We have seen 12 different families blessed this month and 25 volunteers serving.",
+            "When we walk in faith and love our neighbors, God brings peace to our hearts.",
+            "Remember the 10 commandments of kindness and patience every single day of the week.",
+        ];
+        for segment in sermon_segments {
+            let results = detector.detect(segment);
+            assert!(
+                results.is_empty(),
+                "Expected no false-positive detections for English sermon segment: {segment:?}, got: {results:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_spanish_references() {
+        // 1. Juan 3:16 -> John (book 43), chapter 3, verse 16
+        let mut detector = DirectDetector::new();
+        let results = detector.detect("Leamos en Juan 3:16 porque de tal manera amó Dios al mundo");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verse_ref.book_number, 43);
+        assert_eq!(results[0].verse_ref.chapter, 3);
+        assert_eq!(results[0].verse_ref.verse_start, 16);
+
+        // 2. 1 Juan 1:9 -> 1 John (book 62), chapter 1, verse 9
+        let mut detector = DirectDetector::new();
+        let results = detector.detect("Como dice en 1 Juan 1:9 si confesamos nuestros pecados");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verse_ref.book_number, 62);
+        assert_eq!(results[0].verse_ref.chapter, 1);
+        assert_eq!(results[0].verse_ref.verse_start, 9);
+
+        // 3. Salmos 23 -> Psalms (book 19), chapter 23 (held as chapter-only incomplete, then completed or Salmos 23:1)
+        let mut detector = DirectDetector::new();
+        let results = detector.detect("Salmos 23");
+        assert!(results.is_empty());
+        let inc = detector.incomplete.as_ref().expect("Salmos 23 should be held as chapter-only reference");
+        assert_eq!(inc.verse_ref.book_number, 19);
+        assert_eq!(inc.verse_ref.chapter, 23);
+        let results = detector.detect("1");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verse_ref.book_number, 19);
+        assert_eq!(results[0].verse_ref.chapter, 23);
+        assert_eq!(results[0].verse_ref.verse_start, 1);
+
+        // 4. Génesis 1:1 -> Genesis (book 1), chapter 1, verse 1
+        let mut detector = DirectDetector::new();
+        let results = detector.detect("En el principio en Génesis 1:1 creó Dios los cielos y la tierra");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verse_ref.book_number, 1);
+        assert_eq!(results[0].verse_ref.chapter, 1);
+        assert_eq!(results[0].verse_ref.verse_start, 1);
     }
 }

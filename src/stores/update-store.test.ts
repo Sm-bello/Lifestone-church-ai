@@ -38,7 +38,7 @@ describe("update-store", () => {
       name: "Lifestone v1.0.7",
       body: "Exciting new features",
       published_at: "2026-10-18T14:00:00Z",
-      html_url: "https://github.com/Sm-bello/Lifestone-church-ai/releases/tag/v1.0.7",
+      html_url: "https://github.com/calvaryarmies/Lifestone-church-ai/releases/tag/v1.0.7",
       assets: [],
     }
 
@@ -59,7 +59,7 @@ describe("update-store", () => {
       name: "Lifestone v1.0.6",
       body: "Current version",
       published_at: "2026-10-18T14:00:00Z",
-      html_url: "https://github.com/Sm-bello/Lifestone-church-ai/releases/tag/v1.0.6",
+      html_url: "https://github.com/calvaryarmies/Lifestone-church-ai/releases/tag/v1.0.6",
       assets: [],
     }
 

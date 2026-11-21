@@ -2,7 +2,19 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { getAutocompleteSuggestion, getTabNavigationResult } from "@/lib/quick-search"
+import { getAutocompleteSuggestion, getTabNavigationResult, stripAccents } from "@/lib/quick-search"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { openExternalUrl } from "@/lib/open-external"
+import {
+  TRANSLATION_ATTRIBUTIONS,
+  getTranslationAttribution,
+  toTranslationCreditsSlide,
+} from "@/lib/translation-credits"
+import { useBroadcastStore } from "@/stores"
 import {
   Select,
   SelectContent,
@@ -23,6 +35,8 @@ import {
   ChevronRightIcon,
   Loader2Icon,
   RefreshCwIcon,
+  InfoIcon,
+  TvIcon,
 } from "lucide-react"
 import {
   Tooltip,
@@ -65,6 +79,82 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
         return <span key={i}>{part}</span>
       })}
     </>
+  )
+}
+
+function TranslationInfoPopover({ abbreviation }: { abbreviation?: string }) {
+  const attr = getTranslationAttribution(abbreviation) ?? TRANSLATION_ATTRIBUTIONS.NTBT
+
+  const handleProjectCredits = () => {
+    const slide = toTranslationCreditsSlide(attr.abbreviation)
+    useBroadcastStore.getState().setLive(true)
+    useBroadcastStore.getState().setLiveVerse(slide)
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          title="Translation Info & Stream Credits"
+          aria-label="Translation Info & Stream Credits"
+        >
+          <InfoIcon className="size-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-3.5 text-xs space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-foreground">
+            {attr.title} ({attr.abbreviation})
+          </span>
+          <span className="rounded border border-border px-1.5 py-0.5 text-[0.625rem] text-muted-foreground">
+            {attr.releaseId}
+          </span>
+        </div>
+
+        <p className="leading-relaxed text-foreground/90">
+          {attr.creditPrefix}
+          <a
+            href={attr.url}
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(attr.url)
+            }}
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            {attr.publisherLinkText}
+          </a>
+          {attr.creditSuffix}
+          <a
+            href={attr.url}
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternalUrl(attr.url)
+            }}
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            {attr.url}
+          </a>
+        </p>
+
+        <div className="flex items-center justify-between pt-1 border-t border-border/60">
+          <span className="text-[0.625rem] text-muted-foreground">
+            Release {attr.releaseId} · v{attr.licenseVersion}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-[0.625rem]"
+            onClick={handleProjectCredits}
+          >
+            <TvIcon className="mr-1 size-3" />
+            Credits Slide
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -139,6 +229,25 @@ export function SearchPanel() {
   useEffect(() => {
     void handleInitialize()
   }, [handleInitialize])
+
+  // Reload books whenever activeTranslationId changes so localized book names (e.g. NTBT Spanish) update
+  useEffect(() => {
+    if (translations.length === 0) return
+    bibleActions
+      .loadBooks(activeTranslationId)
+      .then((loadedBooks) => {
+        setSelectedBook((prev) => {
+          if (!prev) return loadedBooks.find((b) => b.book_number === 1) ?? loadedBooks[0] ?? null
+          const updated = loadedBooks.find((b) => b.book_number === prev.book_number)
+          if (updated) {
+            setNavBookInput(updated.name)
+            return updated
+          }
+          return prev
+        })
+      })
+      .catch(console.error)
+  }, [activeTranslationId, translations.length])
 
   useEffect(() => {
     if (selectedBookNumber && chapter >= 1) {
@@ -290,14 +399,17 @@ export function SearchPanel() {
   )
 
   // ── Stable 3-step nav logic ───────────────────────────────────────────
-  /** Books filtered by what the user typed (≥1 char, matches name prefix) */
+  /** Books filtered by what the user typed (≥1 char, matches name prefix, accent-insensitive) */
   const navBookMatches = useMemo(() => {
     const q = navBookInput.trim().toLowerCase()
     if (!q) return books
+    const qStripped = stripAccents(q)
     return books.filter(
       (b) =>
         b.name.toLowerCase().startsWith(q) ||
-        b.abbreviation.toLowerCase().startsWith(q)
+        stripAccents(b.name.toLowerCase()).startsWith(qStripped) ||
+        b.abbreviation.toLowerCase().startsWith(q) ||
+        stripAccents(b.abbreviation.toLowerCase()).startsWith(qStripped)
     )
   }, [navBookInput, books])
 
@@ -615,6 +727,9 @@ export function SearchPanel() {
                 ))}
               </SelectContent>
             </Select>
+            <TranslationInfoPopover
+              abbreviation={translations.find((t) => t.id === activeTranslationId)?.abbreviation}
+            />
           </div>
         ) : (
           <div className="flex flex-1 items-center gap-2 pr-3">
@@ -646,6 +761,9 @@ export function SearchPanel() {
                 ))}
               </SelectContent>
             </Select>
+            <TranslationInfoPopover
+              abbreviation={translations.find((t) => t.id === activeTranslationId)?.abbreviation}
+            />
           </div>
         )}
       </div>

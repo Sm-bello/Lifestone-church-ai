@@ -47,10 +47,10 @@ export function StructuredData() {
         applicationCategory: "MultimediaApplication",
         operatingSystem: SITE.operatingSystems.join(", "),
         downloadUrl:
-          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
+          "https://github.com/calvaryarmies/Lifestone-church-ai/releases/download/v1.2.0/Lifestone_1.2.0_x64-setup.exe",
         installUrl:
-          "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.1.1/Lifestone_1.1.1_x64-setup.exe",
-        softwareVersion: "1.1.1",
+          "https://github.com/calvaryarmies/Lifestone-church-ai/releases/download/v1.2.0/Lifestone_1.2.0_x64-setup.exe",
+        softwareVersion: "1.2.0",
         license: "https://opensource.org/licenses/MIT",
         isAccessibleForFree: true,
         offers: {
@@ -65,7 +65,7 @@ export function StructuredData() {
           "Automatic Bible verse detection from explicit citations and quoted passages",
           "Sub-second offline Whisper speech AI with 0.8s buffer",
           "Broadcast-ready scripture overlays via NDI",
-          "Multi-translation support: KJV, ESV, NIV, NKJV, NLT",
+          "Multi-translation support: KJV, ESV, NIV, NKJV, NLT, and Spanish NTBT (Nueva Traducción BibliaTodo)",
           "Direct integration with OBS Studio and vMix",
           "Free and open source",
         ],

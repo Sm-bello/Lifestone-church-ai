@@ -1,11 +1,11 @@
 {
   "name": "lifestone",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "bun run data/import-ntbt.ts && vite build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
@@ -13,7 +13,8 @@
     "tauri": "tauri",
     "test": "vitest",
     "download:bible-data": "bun run data/download-sources.ts",
-    "build:bible": "bun run data/build-bible-db.ts",
+    "build:bible": "bun run data/build-bible-db.ts && bun run data/import-ntbt.ts",
+    "import:ntbt": "bun run data/import-ntbt.ts",
     "download:model": "bun run data/download-model.ts",
     "export:verses": "bun run data/compute-embeddings.ts",
     "quantize:model": "optimum-cli onnxruntime quantize --onnx_model models/qwen3-embedding-0.6b/ --arm64 -o models/qwen3-embedding-0.6b-int8/",
