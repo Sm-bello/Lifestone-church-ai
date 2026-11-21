@@ -59,7 +59,7 @@ export function TransportBar() {
 
   const [hasSeenHymnNotification, setHasSeenHymnNotification] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("lifestone_hymn_announcement_seen_v1") === "true"
+      return localStorage.getItem("lifestone_ntbt_announcement_seen_v1_2_0") === "true"
     } catch {
       return false
     }
@@ -67,7 +67,7 @@ export function TransportBar() {
 
   const dismissHymnNotification = useCallback(() => {
     try {
-      localStorage.setItem("lifestone_hymn_announcement_seen_v1", "true")
+      localStorage.setItem("lifestone_ntbt_announcement_seen_v1_2_0", "true")
     } catch {
       // non-fatal
     }
@@ -92,17 +92,17 @@ export function TransportBar() {
   useEffect(() => {
     if (!hasSeenHymnNotification) {
       const timer = setTimeout(() => {
-        toast("🎵 Church Hymnal (2,900+ Hymns) & HDMI Auto-Detect Are Live!", {
+        toast("🇪🇸 v1.2.0 Update: New Spanish Bible Translation (NTBT) in Town!", {
           description:
-            "Over 2,900 hymns ready for worship. Plug your HDMI cable in and Lifestone automatically detects your screens with one-click live projection.",
+            "¡Nueva Traducción BibliaTodo (NTBT) is now bundled 100% offline! Switch to NTBT anytime in the translation toggle, alongside 2,900+ hymns & HDMI auto-detect.",
           action: {
-            label: "Take Tour",
+            label: "What's New",
             onClick: () => {
               dismissHymnNotification()
-              useTutorialStore.getState().startTutorial()
+              useUpdateStore.getState().openDialog()
             },
           },
-          duration: 9000,
+          duration: 10000,
         })
       }, 2800)
       return () => clearTimeout(timer)
@@ -338,7 +338,7 @@ export function TransportBar() {
                 hasUpdate
                   ? `New update available: v${latestRelease?.version}`
                   : !hasSeenHymnNotification
-                  ? "New Features: Church Hymnal & HDMI Auto-Detect"
+                  ? "v1.2.0 New Feature: Spanish Bible Translation (NTBT) Available!"
                   : "Notifications & Updates"
               }
               onClick={() => {
@@ -357,7 +357,7 @@ export function TransportBar() {
                 title={
                   hasUpdate
                     ? `New release available: v${latestRelease?.version}`
-                    : "New feature: Church Hymnal & HDMI guide"
+                    : "v1.2.0 New feature: Spanish Bible (NTBT) & Hymnal"
                 }
               />
             )}

@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Lifestone",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "identifier": "com.lifestone.church",
   "build": {
     "frontendDist": "../build",
@@ -86,7 +86,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://api.github.com/repos/Sm-bello/lifestone-church-ai/releases/latest"
+        "https://api.github.com/repos/calvaryarmies/Lifestone-church-ai/releases/latest"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFCOTBFOUU3QjUxODc2M0UKUldRK2RoaTE1K21RcTg2MkU0VlZQYVpmdFVJd0RBOHdSNGFKcnNScmJwN0ZPeXB6SmhmUUEzTE8K"

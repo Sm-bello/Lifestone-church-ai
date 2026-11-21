@@ -28,11 +28,11 @@ missing_panics_doc = "allow"
 
 [package]
 name = "lifestone"
-version = "1.1.1"
+version = "1.2.0"
 description = "Lifestone - Real-Time AI Bible Verse Detection"
 authors = ["WHITE HORSE media"]
 license = "MIT"
-repository = "https://github.com/Sm-bello/Lifestone-church-ai"
+repository = "https://github.com/calvaryarmies/Lifestone-church-ai"
 edition = "2021"
 rust-version = "1.77.2"
 

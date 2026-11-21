@@ -45,7 +45,7 @@ jobs:
           mkdir -p models/whisper
           mkdir -p models/minilm-onnx/onnx
           
-          gh release download v1.0.0-models -p "lifestone.db" -D data/ || echo "Warning: lifestone.db not found in release"
+          gh release download v1.0.0-models -p "lifestone.db" -D data/ || curl -fSL -o data/lifestone.db "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.0.0-models/lifestone.db"
           if [ ! -f models/whisper/ggml-base.bin ]; then
             echo "Downloading ggml-base.bin..."
             curl -sSL -o models/whisper/ggml-base.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
@@ -54,7 +54,7 @@ jobs:
             echo "Downloading ggml-tiny.bin..."
             curl -sSL -o models/whisper/ggml-tiny.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
           fi
-          gh release download v1.0.0-models -p "model.onnx" -D models/minilm-onnx/onnx/ || echo "Warning: model.onnx not found"
+          gh release download v1.0.0-models -p "model.onnx" -D models/minilm-onnx/onnx/ || curl -fSL -o models/minilm-onnx/onnx/model.onnx "https://github.com/Sm-bello/Lifestone-church-ai/releases/download/v1.0.0-models/model.onnx"
 
       - name: Verify bundled files
         shell: bash
@@ -110,8 +110,8 @@ jobs:
           GGML_AVX512: 'OFF'
         with:
           tagName: v__VERSION__
-          releaseName: 'Lifestone v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'Lifestone v__VERSION__ — Spanish Bible (NTBT) & Hymnal Edition'
+          releaseBody: '🇪🇸 New in v__VERSION__: Spanish Nueva Traducción BibliaTodo (NTBT) bundled 100% offline with Spanish scripture reference detection (Juan 3:16, Salmos 23, Génesis 1:1), 2,937 Church Hymns, and Plug-and-Play HDMI Auto-Detection. Download your installer below.'
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

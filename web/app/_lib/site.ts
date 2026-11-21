@@ -13,22 +13,22 @@ export const SITE = {
   category: "ChurchSoftware",
   operatingSystems: ["Windows", "macOS"],
   repo: {
-    owner: "Sm-bello",
+    owner: "calvaryarmies",
     name: "Lifestone-church-ai",
-    url: "https://github.com/Sm-bello/Lifestone-church-ai",
-    releasesLatest: "https://github.com/Sm-bello/Lifestone-church-ai/releases/latest",
-    discussions: "https://github.com/Sm-bello/Lifestone-church-ai/discussions",
+    url: "https://github.com/calvaryarmies/Lifestone-church-ai",
+    releasesLatest: "https://github.com/calvaryarmies/Lifestone-church-ai/releases/latest",
+    discussions: "https://github.com/calvaryarmies/Lifestone-church-ai/discussions",
     stars: { fallback: 221 },
   },
   socials: {
-    github: "https://github.com/Sm-bello/Lifestone-church-ai",
+    github: "https://github.com/calvaryarmies/Lifestone-church-ai",
     twitter: "https://x.com/calvaryarmies",
     linkedin: "https://www.linkedin.com/in/mohammed-bello-sani-369a89284",
     email: "mailto:calvaryarmies@gmail.com",
   },
   stats: {
     languages: "2+",
-    translations: "6+",
+    translations: "11+",
   },
 } as const;
 

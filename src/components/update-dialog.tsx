@@ -35,9 +35,10 @@ export function UpdateDialog() {
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const handleOpenRelease = async () => {
-    if (latestRelease?.url) {
-      await openExternalUrl(latestRelease.url)
-    }
+    const targetUrl =
+      latestRelease?.releaseUrl ||
+      "https://github.com/calvaryarmies/Lifestone-church-ai/releases/latest"
+    await openExternalUrl(targetUrl)
   }
 
   const handleManualCheck = async () => {
@@ -157,24 +158,24 @@ export function UpdateDialog() {
               <div className="flex items-center gap-2">
                 <span className="flex size-2 rounded-full bg-cyan-400 animate-pulse" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-                  New Features &amp; Tutorial Update
+                  What&apos;s New in v1.2.0 • Spanish Bible Update
                 </span>
               </div>
               <h4 className="text-sm font-semibold text-foreground">
-                Church Hymnal, HDMI Projector &amp; Refresher Tour
+                Nueva Traducción BibliaTodo (NTBT), 2,900+ Hymns &amp; HDMI Auto-Detect
               </h4>
               <ul className="text-xs text-muted-foreground space-y-2 pt-1">
                 <li className="flex items-start gap-2">
+                  <span className="text-rose-400">🇪🇸</span>
+                  <span><strong>New Spanish Bible (NTBT):</strong> Full offline <em>Santa Biblia, Nueva Traducción BibliaTodo (NTBT)</em> with Spanish book recognition (<em>Juan 3:16</em>, <em>Salmos 23</em>, <em>Génesis 1:1</em>) and one-click translation toggle.</span>
+                </li>
+                <li className="flex items-start gap-2">
                   <span className="text-cyan-400">🎵</span>
-                  <span><strong>Church Hymnal:</strong> Over 2,000 hymns from Gospel Hymn Book (GHS) &amp; classic hymnals with instant lyric search and live projection.</span>
+                  <span><strong>Church Hymnal:</strong> Over 2,900 hymns from Gospel Hymn Book (GHS), CAC &amp; classic hymnals with instant lyric search and live projection.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-400">⚡</span>
                   <span><strong>Plug-and-Play HDMI:</strong> Automatic display detection for church projectors and TVs. Just plug in and Lifestone asks which screen to use.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-amber-400">🎓</span>
-                  <span><strong>Updated Interactive Tutorial:</strong> Full walkthrough now includes the Hymnal and Projector controls, plus an intelligent 2-day inactivity refresher.</span>
                 </li>
               </ul>
               <div className="pt-2">
